@@ -24,8 +24,8 @@ appsettings.*.Local.json
 secrets.json
 
 data/raw/
-data/
-!data/MANIFEST.md
+data/rare-makes.json
+data/unmapped-components.json
 
 # --- materialy robocze: prompty, plany, notatki, praca z AI ---
 _local/

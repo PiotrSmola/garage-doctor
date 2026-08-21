@@ -46,11 +46,15 @@ services:
       ConnectionStrings__Mongo: mongodb://mongo:27017
       ConnectionStrings__Redis: redis:6379
       MongoDatabase: garagedoctor
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
     ports:
       - "127.0.0.1:5080:8080"
     volumes:
       - .:/app
       - nuget:/root/.nuget/packages
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       mongo:
         condition: service_healthy
