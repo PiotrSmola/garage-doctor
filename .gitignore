@@ -1,0 +1,44 @@
+# --- .NET ---
+bin/
+obj/
+[Bb]uild/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+TestResults/
+coverage*.json
+coverage*.xml
+*.coverage
+.vs/
+.idea/
+*.swp
+
+# --- sekrety i konfiguracja lokalna ---
+.env
+.env.*
+!.env.example
+appsettings.Development.local.json
+appsettings.*.Local.json
+secrets.json
+
+data/raw/
+data/
+!data/MANIFEST.md
+
+# --- materialy robocze: prompty, plany, notatki, praca z AI ---
+_local/
+CLAUDE.md
+AGENTS.md
+.claude/
+.cursor/
+.aider*
+.continue/
+.windsurfrules
+.github/copilot-instructions.md
+PROMPT_*.md
+PROJEKT_*.md
+*.local.md
+notes/
+scratch/
