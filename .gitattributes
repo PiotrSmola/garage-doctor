@@ -4,3 +4,6 @@
 *.cmd text eol=crlf
 *.cs text eol=lf
 *.zip binary
+
+# fixture odwzorowujacy konce linii plikow recalls NHTSA (CRLF) - nie normalizowac
+tests/fixtures/recalls-sample.tsv -text
