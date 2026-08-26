@@ -1,0 +1,547 @@
+@model ComparePageViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    var pickers = new[] { Model.First.Picker, Model.Second.Picker };
+    var sides = new[] { Model.First, Model.Second };
+    var ready = Model.First.Picker.YearStepReady && Model.Second.Picker.YearStepReady;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/compare.css" asp-append-version="true" />
+}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/">Search</a>
+    <span>Compare</span>
+</nav>
+
+<header class="page-head">
+    <p class="eyebrow">Two vehicles, side by side</p>
+    @if (Model.Result is { } heading)
+    {
+        <h1>@heading.First.DisplayName and @heading.Second.DisplayName</h1>
+        <p class="page-head__meta">
+            Both columns are drawn from complaints owners filed with NHTSA. Read them as two records of what
+            people reported, not as two scores.
+        </p>
+    }
+    else
+    {
+        <h1>Compare two vehicles</h1>
+        <p class="page-head__meta">
+            Put two model years next to each other and see where each one's complaints land, at what mileage
+            faults turned up, and what the reports say happened. Nothing on this page ranks one car against
+            the other.
+        </p>
+    }
+</header>
+
+@if (Model.Result is { } result)
+{
+    var comparedSides = new[] { result.First, result.Second };
+
+    @if (result.HasUrgentRecall)
+    {
+        <div class="notice notice--severe">
+            <p class="notice__title">Open safety advisory</p>
+            @if (result.First.Recalls.HasUrgent)
+            {
+                <p>
+                    <strong>@result.First.DisplayName</strong> is covered by a
+                    @result.First.Recalls.AdvisoryLabel advisory,
+                    @result.First.Recalls.UrgentCampaignNoun @result.First.Recalls.UrgentCampaignLabel.
+                </p>
+            }
+            @if (result.Second.Recalls.HasUrgent)
+            {
+                <p>
+                    <strong>@result.Second.DisplayName</strong> is covered by a
+                    @result.Second.Recalls.AdvisoryLabel advisory, campaign @result.Second.Recalls.UrgentCampaignLabel.
+                </p>
+            }
+            <p>
+                An advisory is an instruction from the manufacturer about that vehicle, not a point scored in a
+                comparison. Act on it before reading anything below.
+            </p>
+        </div>
+    }
+
+    <div class="notice verdict">
+        <p class="notice__title">No overall winner, and that is deliberate</p>
+        <p>
+            Complaint counts are voluntary reports with no sales figures behind them, so nothing in this data
+            supports ranking one car above the other, and this page refuses to invent a score that would look
+            like it did. What the columns can honestly show is where each car's reports cluster and how much
+            weight each shape deserves.
+        </p>
+    </div>
+
+    @if (result.IsSameVehicle)
+    {
+        <div class="notice">
+            <p class="notice__title">Both sides name the same vehicle</p>
+            <p>
+                Every row below is therefore identical. Choose a different vehicle for one of the sides to get a
+                real comparison.
+            </p>
+        </div>
+    }
+
+    @if (result.IsLopsided)
+    {
+        <div class="notice notice--caution">
+            <p class="notice__title">These two columns are not the same kind of measurement</p>
+            <p>
+                @result.Larger.DisplayName has @result.Larger.TotalLabel reports on record.
+                @result.Smaller.DisplayName has @result.Smaller.TotalLabel, roughly @result.VolumeRatioLabel times
+                fewer. Each share below is computed from that car's own total, so the arithmetic is fair, but the
+                @result.Smaller.DisplayName column swings by whole percentage points when a handful of reports land
+                differently, while the @result.Larger.DisplayName column barely moves. Read the smaller column as an
+                impression and the larger one as a distribution.
+            </p>
+        </div>
+    }
+
+    @foreach (var side in comparedSides)
+    {
+        @if (side.HasSmallSample)
+        {
+            <div class="notice notice--caution">
+                <p class="notice__title">@side.DisplayName has too few reports to read as a pattern</p>
+                <p>
+                    @side.TotalLabel complaints is a handful of anecdotes, not a distribution. The shares in that
+                    column are printed because hiding them would be worse, but a single extra report can move any
+                    of them by several points.
+                </p>
+            </div>
+        }
+    }
+
+    <section class="panel" id="samples" aria-labelledby="samples-heading">
+        <div class="panel__head">
+            <h2 id="samples-heading">What each column is built from</h2>
+            <p class="panel__note"><a href="@result.SwapPath">Swap the sides</a></p>
+        </div>
+
+        <div class="compare-scroll">
+            <table class="mirror">
+                <thead>
+                    <tr>
+                        <th scope="col">Figure</th>
+                        <th scope="col" class="mirror__side mirror__side--first">
+                            <a href="@result.First.ProfilePath">@result.First.DisplayName</a>
+                            <span class="mirror__sample">@result.First.SampleLine</span>
+                        </th>
+                        <th scope="col" class="mirror__side mirror__side--second">
+                            <a href="@result.Second.ProfilePath">@result.Second.DisplayName</a>
+                            <span class="mirror__sample">@result.Second.SampleLine</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var figure in result.Figures)
+                    {
+                        <tr>
+                            <th scope="row">@figure.Label</th>
+                            <td class="num">@figure.First</td>
+                            <td class="num">@figure.Second</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <p class="caveat">
+            These two totals are the first thing to read and the last thing to compare. A model sold in large
+            numbers collects more complaints than a rare one whatever its build quality, and NHTSA publishes no
+            fleet size to divide by, so the difference between the two totals says more about how many cars were
+            on the road than about how they were made.
+        </p>
+    </section>
+
+    <section class="panel" id="components" aria-labelledby="components-heading">
+        <div class="panel__head">
+            <h2 id="components-heading">Where the reports land</h2>
+            <p class="panel__note">Share of that car's own reports, raw count beside it</p>
+        </div>
+
+        @if (result.ComponentRows.Count == 0)
+        {
+            <div class="empty">Neither vehicle has a component group recorded against its complaints.</div>
+        }
+        else
+        {
+            <div class="compare-scroll">
+                <table class="mirror mirror--bars">
+                    <thead>
+                        <tr>
+                            <th scope="col">Component group</th>
+                            <th scope="col" class="mirror__side mirror__side--first">
+                                @result.First.DisplayName
+                                <span class="mirror__sample">of @result.First.TotalLabel reports</span>
+                            </th>
+                            <th scope="col" class="mirror__side mirror__side--second">
+                                @result.Second.DisplayName
+                                <span class="mirror__sample">of @result.Second.TotalLabel reports</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in result.ComponentRows)
+                        {
+                            <tr class="@(row.IsRemainder ? "mirror__remainder" : null)">
+                                <th scope="row">@row.Label</th>
+                                <td class="mirror__cell">
+                                    <span class="bar__track" aria-hidden="true"><span class="bar__fill" style="width: @row.First.WidthPercent%"></span></span>
+                                    <span class="mirror__figure">@row.First.ShareLabel <span class="muted">@row.First.CountLabel</span></span>
+                                </td>
+                                <td class="mirror__cell mirror__cell--alt">
+                                    <span class="bar__track" aria-hidden="true"><span class="bar__fill" style="width: @row.Second.WidthPercent%"></span></span>
+                                    <span class="mirror__figure">@row.Second.ShareLabel <span class="muted">@row.Second.CountLabel</span></span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="caveat">
+                This is the one comparison the data actually supports. Two cars with very different report volumes
+                can still be read against each other on mix, because each share is a fraction of that car's own
+                reports. Rows are the union of both cars' most reported groups, so a group large for one and small
+                for the other still appears on both sides. A report can name more than one component group, so a
+                column may add to slightly more than 100 per cent.
+            </p>
+        }
+    </section>
+
+    <section class="panel" id="mileage" aria-labelledby="mileage-heading">
+        <div class="panel__head">
+            <h2 id="mileage-heading">Mileage at failure</h2>
+            <p class="panel__note">Same bucket scale on both sides</p>
+        </div>
+
+        @if (!result.HasMileageSample)
+        {
+            <div class="empty">
+                Neither vehicle has a single report carrying an odometer reading, so there is no distribution to
+                draw. Mileage is missing from roughly half of all NHTSA complaints.
+            </div>
+        }
+        else
+        {
+            @if (result.EitherHasThinMileageSample)
+            {
+                <div class="notice notice--caution">
+                    <p class="notice__title">Thin mileage sample</p>
+                    <p>
+                        Shares below are of the reports that carried an odometer reading, not of all reports:
+                        @result.First.WithMileageLabel of @result.First.TotalLabel for @result.First.DisplayName and
+                        @result.Second.WithMileageLabel of @result.Second.TotalLabel for @result.Second.DisplayName.
+                        A shape read from fewer than @ComparePageViewModel.ThinMileageThreshold records is noise.
+                    </p>
+                </div>
+            }
+
+            <div class="compare-scroll">
+                <table class="mirror mirror--bars">
+                    <thead>
+                        <tr>
+                            <th scope="col">Miles at failure</th>
+                            <th scope="col" class="mirror__side mirror__side--first">
+                                @result.First.DisplayName
+                                <span class="mirror__sample">@result.First.WithMileageLabel of @result.First.TotalLabel reports</span>
+                            </th>
+                            <th scope="col" class="mirror__side mirror__side--second">
+                                @result.Second.DisplayName
+                                <span class="mirror__sample">@result.Second.WithMileageLabel of @result.Second.TotalLabel reports</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in result.MileageRows)
+                        {
+                            <tr>
+                                <th scope="row" class="mirror__bucket">@row.Label</th>
+                                <td class="mirror__cell">
+                                    <span class="bar__track" aria-hidden="true"><span class="bar__fill" style="width: @row.First.WidthPercent%"></span></span>
+                                    <span class="mirror__figure">@row.First.ShareLabel <span class="muted">@row.First.CountLabel</span></span>
+                                </td>
+                                <td class="mirror__cell mirror__cell--alt">
+                                    <span class="bar__track" aria-hidden="true"><span class="bar__fill" style="width: @row.Second.WidthPercent%"></span></span>
+                                    <span class="mirror__figure">@row.Second.ShareLabel <span class="muted">@row.Second.CountLabel</span></span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="caveat">
+                Buckets are 25,000 miles wide and the last one is open ended. Both sides use the same buckets and
+                both are drawn as shares, so the shapes are comparable even when one car has far more readings than
+                the other. Owners type the mileage themselves, so round numbers are over-represented, and a first
+                bucket swollen by warranty-period reporting is normal rather than a finding.
+            </p>
+        }
+    </section>
+
+    <section class="panel" id="severity" aria-labelledby="severity-heading">
+        <div class="panel__head">
+            <h2 id="severity-heading">What the reports say happened</h2>
+            <p class="panel__note">Count, then the rate per hundred reports</p>
+        </div>
+
+        <div class="compare-scroll">
+            <table class="mirror mirror--severity">
+                <thead>
+                    <tr>
+                        <th scope="col">Signal</th>
+                        <th scope="col" class="mirror__side mirror__side--first">
+                            @result.First.DisplayName
+                            <span class="mirror__sample">of @result.First.TotalLabel reports</span>
+                        </th>
+                        <th scope="col" class="mirror__side mirror__side--second">
+                            @result.Second.DisplayName
+                            <span class="mirror__sample">of @result.Second.TotalLabel reports</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in result.SeverityRows)
+                    {
+                        <tr class="@(row.Highlighted ? "mirror__critical" : null)">
+                            <th scope="row">@row.Label</th>
+                            <td class="mirror__cell">
+                                <span class="mirror__figure">
+                                    <span>@row.First.CountLabel</span>
+                                    <span class="muted">@row.First.RateLabel</span>
+                                </span>
+                            </td>
+                            <td class="mirror__cell">
+                                <span class="mirror__figure">
+                                    <span>@row.Second.CountLabel</span>
+                                    <span class="muted">@row.Second.RateLabel</span>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <p class="caveat">
+            The rate is per hundred filed reports, not per hundred cars on the road, so it measures how severe the
+            reports were rather than how often the vehicle hurt anyone. A crash, fire, injury or death here is what
+            the owner described, not a finding of a defect investigation, and reports describing serious harm are
+            more likely to be filed in the first place.
+        </p>
+    </section>
+
+    <section class="panel" id="recalls" aria-labelledby="recalls-heading">
+        <div class="panel__head">
+            <h2 id="recalls-heading">Recall exposure</h2>
+            <p class="panel__note">Campaigns covering this model year</p>
+        </div>
+
+        @if (!result.HasAnyRecall)
+        {
+            <div class="empty">
+                Neither vehicle has a recall campaign on file for this model year. That is an absence of records,
+                not a certificate of health.
+            </div>
+        }
+        else
+        {
+            <div class="compare-scroll">
+                <table class="mirror">
+                    <thead>
+                        <tr>
+                            <th scope="col">Figure</th>
+                            <th scope="col" class="mirror__side mirror__side--first">@result.First.DisplayName</th>
+                            <th scope="col" class="mirror__side mirror__side--second">@result.Second.DisplayName</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">Recall campaigns</th>
+                            <td class="num">@result.First.Recalls.CampaignCountLabel</td>
+                            <td class="num">@result.Second.Recalls.CampaignCountLabel</td>
+                        </tr>
+                        <tr class="@(result.HasUrgentRecall ? "mirror__critical" : null)">
+                            <th scope="row">Consumer advisory</th>
+                            <td>@result.First.Recalls.AdvisoryLabel</td>
+                            <td>@result.Second.Recalls.AdvisoryLabel</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Components recalled</th>
+                            <td>@result.First.Recalls.GroupsLabel</td>
+                            <td>@result.Second.Recalls.GroupsLabel</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Campaigns filed</th>
+                            <td>@result.First.Recalls.SpanLabel</td>
+                            <td>@result.Second.Recalls.SpanLabel</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="caveat">
+                Recalls are a different kind of evidence from complaints: a manufacturer or the regulator has
+                accepted that a defect exists and has committed to a remedy. A higher campaign count is therefore
+                not straightforwardly worse, since it can mean a maker that investigates and recalls readily. What
+                matters to an owner is whether a specific campaign is open on their car.
+            </p>
+        }
+    </section>
+}
+else
+{
+    @foreach (var side in sides)
+    {
+        @if (side.Status == CompareSideStatus.Unknown)
+        {
+            <div class="notice">
+                <p class="notice__title">The @side.Label.ToLowerInvariant() did not resolve</p>
+                <p>
+                    Nothing in the catalogue is filed as <strong>@side.RequestedKeyLabel</strong>. A vehicle is
+                    identified by make, model and model year, written as
+                    <span class="num">make|model|year</span>. Pick it from the lists below, or
+                    <a href="/makes">browse the makes</a> to see what is on file.
+                </p>
+            </div>
+        }
+        else if (side.Status == CompareSideStatus.Missing)
+        {
+            <div class="notice">
+                <p class="notice__title">The @side.Label.ToLowerInvariant() has no profile to compare</p>
+                <p>
+                    <strong>@side.RequestedKeyLabel</strong> is in the catalogue, but no failure profile has been
+                    computed for it, so there is nothing to put in a column. Choose another model year below.
+                </p>
+            </div>
+        }
+    }
+
+    @if (Model.LoneVehicle is { } lone)
+    {
+        <section class="panel" id="chosen" aria-labelledby="chosen-heading">
+            <div class="panel__head">
+                <h2 id="chosen-heading">@lone.DisplayName is on one side</h2>
+                <p class="panel__note"><a href="@lone.ProfilePath">Full profile</a></p>
+            </div>
+
+            <div class="stat-row">
+                <div class="stat">
+                    <div class="stat__value">@lone.TotalLabel</div>
+                    <div class="stat__label">Complaints on record</div>
+                </div>
+                <div class="stat">
+                    <div class="stat__value">@lone.WithMileageLabel</div>
+                    <div class="stat__label">Of those, with a mileage</div>
+                </div>
+                <div class="stat">
+                    <div class="stat__value">@lone.AverageMileageLabel</div>
+                    <div class="stat__label">Average miles at failure</div>
+                </div>
+                <div class="stat">
+                    <div class="stat__value">@lone.Recalls.CampaignCountLabel</div>
+                    <div class="stat__label">Recall campaigns</div>
+                </div>
+            </div>
+
+            <p class="caveat">
+                Reports received @lone.ReportSpanLabel, across @lone.ComponentGroupsLabel component groups.
+                Choose a @Model.PendingSide.Label.ToLowerInvariant() below to see the two records side by side.
+                A car of similar size and age from the same model year makes the fairest pairing, because the two
+                will have been driven in roughly comparable ways.
+            </p>
+        </section>
+    }
+    else if (!Model.HasProblem)
+    {
+        <section class="panel" id="explainer" aria-labelledby="explainer-heading">
+            <div class="panel__head">
+                <h2 id="explainer-heading">What this page will and will not tell you</h2>
+            </div>
+            <p>
+                Choose two model years and this page sets their complaint records beside each other: how many
+                reports each carries, what fraction of those reports name the power train, the brakes or the
+                electrics, at what mileage faults turned up, what the reports say happened, and which recall
+                campaigns are open.
+            </p>
+            <p>
+                It will not tell you which car is better. Complaints are filed voluntarily and are never divided
+                by how many cars were sold, so the car with more reports is usually just the car there were more
+                of. Comparing the two on mix and on shape is defensible. Comparing them on totals is not, and no
+                score on this page will suggest otherwise.
+            </p>
+            <p class="caveat">
+                The fairest pairings are two vehicles of similar size and age, ideally from the same model year.
+                <a href="/makes">Browse the makes</a> if you are not sure what is on file.
+            </p>
+        </section>
+    }
+}
+
+<section class="panel" id="pick" aria-labelledby="pick-heading">
+    <div class="panel__head">
+        <h2 id="pick-heading">@(Model.HasResult ? "Compare a different pair" : "Choose two vehicles")</h2>
+        <p class="panel__note">Three steps a side, one page load each. No JavaScript required.</p>
+    </div>
+
+    <form method="get" action="/compare" class="picker">
+        <div class="picker__sides">
+            @foreach (var picker in pickers)
+            {
+                <fieldset class="picker__side picker__side--@picker.Side">
+                    <legend class="eyebrow">@picker.Label</legend>
+
+                    <div class="field">
+                        <label for="@picker.MakeId">1 &middot; Make</label>
+                        <select id="@picker.MakeId" name="@picker.MakeField">
+                            <option value="">Select a make</option>
+                            @foreach (var option in picker.Makes)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">@option.Label</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="@picker.ModelId">2 &middot; Model</label>
+                        <select id="@picker.ModelId" name="@picker.ModelField" disabled="@(!picker.ModelStepReady)">
+                            <option value="">@(picker.ModelStepReady ? "Select a model" : "Choose a make first")</option>
+                            @foreach (var option in picker.Models)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">@option.Label</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="@picker.YearId">3 &middot; Model year</label>
+                        <select id="@picker.YearId" name="@picker.YearField" disabled="@(!picker.YearStepReady)">
+                            <option value="">@(picker.YearStepReady ? "Select a year" : "Choose a model first")</option>
+                            @foreach (var option in picker.Years)
+                            {
+                                <option value="@option.Value" selected="@option.Selected">@option.Label</option>
+                            }
+                        </select>
+                    </div>
+                </fieldset>
+            }
+        </div>
+
+        <div class="picker__actions">
+            <button type="submit">@(ready ? "Compare" : "Continue")</button>
+            <a class="button button--quiet" href="/compare">Start again</a>
+        </div>
+    </form>
+
+    <p class="caveat">
+        Every comparison is a plain link. Copy the address bar to share exactly what you are looking at, or write
+        one by hand as <span class="num">/compare?a=make|model|year&amp;b=make|model|year</span>.
+    </p>
+</section>
