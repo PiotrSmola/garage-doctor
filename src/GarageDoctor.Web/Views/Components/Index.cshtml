@@ -1,0 +1,76 @@
+@model ComponentsIndexViewModel
+@{
+    ViewData["Title"] = "Components";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/components.css" asp-append-version="true" />
+}
+
+<header class="page-head">
+    <p class="eyebrow">Components</p>
+    <h1>What breaks, and on which cars</h1>
+    <p class="page-head__meta">
+        Every other page here starts with a car and asks what went wrong on it. These pages run the question
+        backwards: pick a part, and see which cars are reported for it. All
+        <span class="num">@Model.TotalComplaints.ToString("N0")</span> complaints in the database fall into the
+        @Model.GroupCount groups below, and the five largest hold @Model.LeadingShareLabel% of them.
+    </p>
+</header>
+
+<div class="notice">
+    <p class="notice__title">Why @Model.GroupCount groups and not fifty-five</p>
+    <p>
+        NHTSA has been collecting these reports since the 1990s and its own category list drifted the whole way
+        through, so the source file names the same part more than once: <em>ENGINE</em> and
+        <em>ENGINE AND ENGINE COOLING</em> are one thing recorded under two headings, and so are
+        <em>SERVICE BRAKES</em>, <em>SERVICE BRAKES, HYDRAULIC</em> and four further brake spellings. Garage
+        Doctor folds those raw top-level categories into @Model.GroupCount canonical groups through a
+        hand-edited map, so asking for brake complaints returns all of them rather than whichever wording was in
+        use that decade. Every group page lists the raw names it absorbed.
+    </p>
+</div>
+
+<section class="panel" aria-labelledby="groups-heading">
+    <div class="panel__head">
+        <h2 id="groups-heading">The @Model.GroupCount component groups</h2>
+        <p class="panel__note">Ranked by complaint count</p>
+    </div>
+
+    @if (Model.Groups.Count == 0)
+    {
+        <div class="empty">
+            The component taxonomy has not been built yet, so there is nothing to rank. Run the ingest pipeline
+            and this page fills itself.
+        </div>
+    }
+    else
+    {
+        <div class="bars group-list">
+            <div class="bar bar--head">
+                <span class="bar__label">Component group</span>
+                <span></span>
+                <span class="bar__value">Complaints</span>
+                <span class="bar__share">Share</span>
+            </div>
+            @foreach (var group in Model.Groups)
+            {
+                <div class="bar">
+                    <span class="bar__label">
+                        <a asp-action="Details" asp-route-slug="@group.Slug" title="@group.Group">@group.Group</a>
+                    </span>
+                    <span class="bar__track"><span class="bar__fill" style="width: @group.WidthPercent%"></span></span>
+                    <span class="bar__value">@group.ComplaintCount.ToString("N0")</span>
+                    <span class="bar__share">@group.ShareLabel%</span>
+                </div>
+            }
+        </div>
+
+        <p class="caveat">
+            Bar length is relative to the largest group, not to the total. Shares are of every complaint on file,
+            and they add up to 100% because each complaint is counted once, under the top level of its component
+            path. <em>OTHER</em> and <em>UNKNOWN</em> are kept in the ranking rather than hidden: they are what
+            the classification could not place, and pretending otherwise would flatter the map.
+        </p>
+    }
+</section>

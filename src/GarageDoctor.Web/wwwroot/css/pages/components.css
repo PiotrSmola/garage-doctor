@@ -1,0 +1,109 @@
+.panel > p:last-child,
+.notice > p:last-child {
+    margin-bottom: 0;
+}
+
+.panel__head .panel__note {
+    margin: 0;
+    text-align: right;
+}
+
+.component-title {
+    font-size: 1.5rem;
+    letter-spacing: 0.005em;
+}
+
+.component-stats {
+    margin-bottom: 1.5rem;
+}
+
+.group-list .bar,
+.make-list .bar {
+    grid-template-columns: minmax(9rem, 16rem) 1fr minmax(4.5rem, auto) minmax(3.5rem, auto);
+}
+
+.histogram .bar {
+    grid-template-columns: minmax(6rem, 11rem) 1fr minmax(4.5rem, auto) minmax(3rem, auto);
+}
+
+.bar__share {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink-3);
+}
+
+.bar--head {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 0.25rem;
+}
+
+.bar--head .bar__label,
+.bar--head .bar__value,
+.bar--head .bar__share {
+    color: var(--ink-3);
+    font-family: inherit;
+    letter-spacing: inherit;
+}
+
+.histogram .bar__label {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.histogram .bar--head .bar__label {
+    font-family: inherit;
+}
+
+.group-list .bar__label a,
+.make-list .bar__label a {
+    color: var(--ink);
+    text-decoration-color: var(--rule-strong);
+}
+
+.group-list .bar:hover .bar__fill,
+.make-list .bar:hover .bar__fill {
+    background: var(--bar-alt);
+}
+
+.raw-names {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--ink-2);
+}
+
+.raw-names li {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.4rem 0;
+}
+
+@media (max-width: 40rem) {
+    .group-list .bar,
+    .make-list .bar {
+        grid-template-columns: minmax(6rem, 9rem) 1fr minmax(3.5rem, auto) minmax(2.75rem, auto);
+    }
+
+    .histogram .bar {
+        grid-template-columns: minmax(4.5rem, 7rem) 1fr minmax(3.5rem, auto) minmax(2.5rem, auto);
+    }
+
+    .panel__head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .panel__head .panel__note {
+        text-align: left;
+    }
+}
