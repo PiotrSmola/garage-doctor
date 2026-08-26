@@ -1,3 +1,4 @@
+using GarageDoctor.Infrastructure.Queries;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 
@@ -18,6 +19,9 @@ public static class MongoServiceCollectionExtensions
             provider.GetRequiredService<IMongoClient>(),
             provider.GetRequiredService<MongoSettings>().DatabaseName));
         services.AddSingleton<IndexBuilder>();
+        services.AddSingleton<IVehicleCatalogQueries, MongoVehicleCatalogQueries>();
+        services.AddSingleton<IVehicleProfileQueries, MongoVehicleProfileQueries>();
+        services.AddSingleton<IRecallQueries, MongoRecallQueries>();
 
         return services;
     }

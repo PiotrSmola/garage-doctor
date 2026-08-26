@@ -1,22 +1,26 @@
+using GarageDoctor.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddMongo(new MongoSettings
+{
+    ConnectionString = builder.Configuration.GetConnectionString("Mongo") ?? "mongodb://mongo:27017",
+    DatabaseName = builder.Configuration["MongoDatabase"] ?? "garagedoctor"
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseExceptionHandler("/error");
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
-app.UseRouting();
+app.UseStatusCodePagesWithReExecute("/error/{0}");
 
-app.UseAuthorization();
+app.UseRouting();
 
 app.MapStaticAssets();
 
@@ -24,6 +28,5 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
-
 
 app.Run();

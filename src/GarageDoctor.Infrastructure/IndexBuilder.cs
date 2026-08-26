@@ -63,7 +63,12 @@ public sealed class IndexBuilder
                 .Ascending(vehicle => vehicle.Make)
                 .Ascending(vehicle => vehicle.Model)
                 .Ascending(vehicle => vehicle.ModelYear),
-            new CreateIndexOptions { Name = "vehicles_make_model_modelYear_unique", Unique = true })
+            new CreateIndexOptions { Name = "vehicles_make_model_modelYear_unique", Unique = true }),
+        new(Builders<VehicleCatalogEntry>.IndexKeys
+                .Ascending(vehicle => vehicle.MakeSlug)
+                .Ascending(vehicle => vehicle.ModelSlug)
+                .Descending(vehicle => vehicle.ModelYear),
+            new CreateIndexOptions { Name = "vehicles_makeSlug_modelSlug_modelYear" })
     ];
 
     private static IReadOnlyList<CreateIndexModel<VehicleProfile>> ProfileIndexes() =>
