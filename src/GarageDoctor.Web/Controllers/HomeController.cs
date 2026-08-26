@@ -10,12 +10,21 @@ public sealed class HomeController : Controller
 
     private const long FrequentMakeThreshold = 10_000;
 
-    private readonly IVehicleCatalogQueries _catalog;
+    private const int RankedVehicleCount = 10;
 
-    public HomeController(IVehicleCatalogQueries catalog)
+    private const int RankedComponentCount = 10;
+
+    private const int AdvisoryCount = 5;
+
+    private readonly IVehicleCatalogQueries _catalog;
+    private readonly IRecallQueries _recalls;
+
+    public HomeController(IVehicleCatalogQueries catalog, IRecallQueries recalls)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(recalls);
         _catalog = catalog;
+        _recalls = recalls;
     }
 
     [HttpGet("/")]
@@ -53,8 +62,13 @@ public sealed class HomeController : Controller
 
         var makes = await _catalog.GetMakesAsync(cancellationToken);
         var overview = await _catalog.GetOverviewAsync(cancellationToken);
+        var vehicles = await _catalog.GetMostReportedVehiclesAsync(RankedVehicleCount, cancellationToken);
+        var components = await _catalog.GetComponentGroupsAsync(cancellationToken);
+        var advisories = await _recalls.GetLatestAdvisoriesAsync(AdvisoryCount, cancellationToken);
         var ranked = makes.Take(RankedMakeCount).ToList();
         var leaderCount = ranked.Count == 0 ? 0 : ranked[0].ComplaintCount;
+        var rankedComponents = components.Take(RankedComponentCount).ToList();
+        var componentLeader = rankedComponents.Count == 0 ? 0 : rankedComponents[0].ComplaintCount;
 
         return View(new HomeIndexViewModel
         {
@@ -62,6 +76,16 @@ public sealed class HomeController : Controller
             TopMakes = ranked
                 .Select(entry => new MakeRanking(entry.MakeSlug, entry.Make, entry.ComplaintCount, leaderCount))
                 .ToList(),
+            TopVehicles = vehicles,
+            TopComponents = rankedComponents
+                .Select(entry => new ComponentRanking(
+                    entry.Group,
+                    entry.Slug,
+                    entry.ComplaintCount,
+                    componentLeader,
+                    overview.Complaints))
+                .ToList(),
+            Advisories = advisories,
             Cascade = new SearchCascade
             {
                 Makes = makes

@@ -41,6 +41,17 @@ public sealed record SearchCascade
     public bool YearStepReady => Years.Count > 0;
 }
 
+public sealed record ComponentRanking(string Group, string Slug, int ComplaintCount, int LeaderComplaintCount, long DatasetComplaints)
+{
+    public string BarWidth => LeaderComplaintCount <= 0
+        ? "0%"
+        : ((ComplaintCount * 100d) / LeaderComplaintCount).ToString("0.#", CultureInfo.InvariantCulture) + "%";
+
+    public string DatasetShare => DatasetComplaints <= 0
+        ? "0%"
+        : ((ComplaintCount * 100d) / DatasetComplaints).ToString("0.0", CultureInfo.InvariantCulture) + "%";
+}
+
 public sealed record HomeIndexViewModel
 {
     public required CatalogOverview Overview { get; init; }
@@ -48,6 +59,12 @@ public sealed record HomeIndexViewModel
     public required SearchCascade Cascade { get; init; }
 
     public required IReadOnlyList<MakeRanking> TopMakes { get; init; }
+
+    public required IReadOnlyList<VehicleRanking> TopVehicles { get; init; }
+
+    public required IReadOnlyList<ComponentRanking> TopComponents { get; init; }
+
+    public required IReadOnlyList<ConsumerAdvisory> Advisories { get; init; }
 
     public string MileageShare => Overview.Complaints <= 0
         ? "0%"

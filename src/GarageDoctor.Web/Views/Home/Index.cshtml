@@ -130,6 +130,59 @@
     </p>
 </section>
 
+@if (Model.Advisories.Count > 0)
+{
+    <section class="panel">
+        <div class="panel__head">
+            <h2>Latest consumer advisories</h2>
+            <p class="panel__note">The strongest warnings NHTSA issues</p>
+        </div>
+        <p>
+            A do-not-drive advisory means the manufacturer is telling owners to stop driving the vehicle until it is
+            repaired. A park-outside advisory means it can catch fire while parked, so it should be kept away from
+            buildings. Both were added to the recall file in May 2025.
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Campaign</th>
+                    <th>Make</th>
+                    <th>Component</th>
+                    <th>Advisory</th>
+                    <th class="num">Vehicles</th>
+                    <th class="num">Reported</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var advisory in Model.Advisories)
+                {
+                    <tr>
+                        <td><a asp-controller="Recalls" asp-action="Details" asp-route-campaignNumber="@advisory.CampaignNumber">@advisory.CampaignNumber</a></td>
+                        <td>@advisory.Make</td>
+                        <td class="muted">@advisory.ComponentName</td>
+                        <td>
+                            @if (advisory.DoNotDrive && advisory.ParkOutside)
+                            {
+                                <text>Do not drive, park outside</text>
+                            }
+                            else if (advisory.DoNotDrive)
+                            {
+                                <text>Do not drive</text>
+                            }
+                            else
+                            {
+                                <text>Park outside</text>
+                            }
+                        </td>
+                        <td class="num">@advisory.VehicleCount.ToString("N0")</td>
+                        <td class="num">@(advisory.ReportReceivedDate?.ToString("yyyy-MM-dd") ?? "not recorded")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
 <section class="panel">
     <div class="panel__head">
         <h2>Most reported makes</h2>
@@ -149,6 +202,84 @@
         Complaints are filed voluntarily, so this ranks reporting volume, not reliability. A make that sold in
         larger numbers collects more complaints regardless of how well it was built, and nothing here is
         normalized by fleet size, because NHTSA does not publish how many vehicles are on the road.
+    </p>
+</section>
+
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Most reported vehicles</h2>
+        <p class="panel__note">One make, model and year each</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Vehicle</th>
+                <th class="num">Complaints</th>
+                <th class="num">With mileage</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in Model.TopVehicles)
+            {
+                <tr>
+                    <td>
+                        <a asp-controller="Vehicles" asp-action="Profile"
+                           asp-route-makeSlug="@vehicle.MakeSlug"
+                           asp-route-modelSlug="@vehicle.ModelSlug"
+                           asp-route-modelYear="@vehicle.ModelYear">@vehicle.Make @vehicle.Model @vehicle.ModelYear</a>
+                    </td>
+                    <td class="num">@vehicle.TotalComplaints.ToString("N0")</td>
+                    <td class="num">@vehicle.WithMileage.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="caveat">
+        These are the cars owners filed the most reports about, which tracks sales volume and model longevity as
+        much as anything else. Open one to see what actually failed and at what mileage.
+    </p>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>What breaks most often</h2>
+        <a class="panel__note" href="/components">All @Model.Overview.Complaints.ToString("N0") complaints by component</a>
+    </div>
+    <div class="bars">
+        @foreach (var component in Model.TopComponents)
+        {
+            <div class="bar bar--alt">
+                <a class="bar__label" href="/components/@component.Slug">@component.Group</a>
+                <span class="bar__track"><span class="bar__fill" style="width: @component.BarWidth"></span></span>
+                <span class="bar__value">@component.ComplaintCount.ToString("N0")</span>
+            </div>
+        }
+    </div>
+    <p class="caveat">
+        NHTSA changed its component taxonomy repeatedly over thirty years, so 55 raw top-level categories are folded
+        into 26 canonical groups through a hand-edited map. Engine and engine cooling were the same thing all along.
+    </p>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>How to read a failure profile</h2>
+    </div>
+    <p>
+        The mileage histogram is the part worth your attention. Roughly half of all complaints carry the odometer
+        reading at the moment the fault appeared, and plotting those readings tells you something no specification
+        sheet does: whether a part fails early or wears out.
+    </p>
+    <p>
+        Volkswagen power train reports are the clearest example in the set. They peak in the first 25 000 miles,
+        drop by more than half in the next bucket, then rise again between 50 000 and 100 000. That first peak is the
+        warranty period, when owners report everything, and the second is genuine wear. A single average would hide
+        both.
+    </p>
+    <p class="caveat">
+        Every histogram in this application states how many reports it was built from, because a shape drawn from
+        twelve readings deserves less trust than one drawn from three thousand.
     </p>
 </section>
 
