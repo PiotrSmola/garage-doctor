@@ -1,8 +1,154 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+@model HomeIndexViewModel
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="page-head">
+    <p class="eyebrow">NHTSA Office of Defects Investigation</p>
+    <h1>What owners reported, by make, model and year</h1>
+    <p class="page-head__meta">
+        Garage Doctor reads the complaint and recall files published by the United States road safety regulator.
+        Pick a make, then a model, then a model year to see which components owners complained about and at what
+        mileage the fault turned up.
+    </p>
 </div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Find a vehicle</h2>
+        <p class="panel__note">Three steps, one page load each. Works with JavaScript turned off.</p>
+    </div>
+
+    @if (Model.Cascade.UnresolvedMake is not null)
+    {
+        <div class="notice">
+            <div class="notice__title">No make matches that name</div>
+            Nothing in the catalog is filed under <strong>@Model.Cascade.UnresolvedMake</strong>. Choose one from the list.
+        </div>
+    }
+
+    <form class="cascade" method="get" asp-controller="Home" asp-action="Index" data-cascade>
+        <div class="field">
+            <label for="make">1 &middot; Make</label>
+            <select id="make" name="make">
+                <option value="">Select a make</option>
+                @foreach (var make in Model.Cascade.Makes)
+                {
+                    <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="model">2 &middot; Model</label>
+            <select id="model" name="model" disabled="@(!Model.Cascade.ModelStepReady)">
+                <option value="">@(Model.Cascade.ModelStepReady ? "Select a model" : "Choose a make first")</option>
+                @foreach (var vehicleModel in Model.Cascade.Models)
+                {
+                    <option value="@vehicleModel.Slug" selected="@(vehicleModel.Slug == Model.Cascade.SelectedModelSlug)">@vehicleModel.Name &middot; @vehicleModel.ComplaintCount.ToString("N0")</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="year">3 &middot; Model year</label>
+            <select id="year" name="year" disabled="@(!Model.Cascade.YearStepReady)">
+                <option value="">@(Model.Cascade.YearStepReady ? "Select a year" : "Choose a model first")</option>
+                @foreach (var year in Model.Cascade.Years)
+                {
+                    <option value="@year.ModelYear">@year.ModelYear &middot; @year.ComplaintCount.ToString("N0")</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <button type="submit">@(Model.Cascade.YearStepReady ? "Open profile" : "Continue")</button>
+        </div>
+    </form>
+
+    @if (Model.Cascade.YearStepReady)
+    {
+        <p class="caveat">
+            @Model.Cascade.SelectedMakeName @Model.Cascade.SelectedModelName is on file for
+            @Model.Cascade.Years.Count model years, newest first, with the complaint count beside each one.
+            <a asp-controller="Home" asp-action="Index">Start again</a>.
+        </p>
+    }
+    else if (Model.Cascade.ModelStepReady)
+    {
+        <p class="caveat">
+            @Model.Cascade.SelectedMakeName has @Model.Cascade.Models.Count models in the catalog, ordered by
+            complaint count.
+            <a asp-controller="Makes" asp-action="Details" asp-route-makeSlug="@Model.Cascade.SelectedMakeSlug">See them as a table</a>,
+            or <a asp-controller="Home" asp-action="Index">start again</a>.
+        </p>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>What the database holds</h2>
+        <p class="panel__note">Counted at the last ingest</p>
+    </div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Complaints.ToString("N0")</div>
+            <div class="stat__label">Complaints</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Recalls.ToString("N0")</div>
+            <div class="stat__label">Recall rows</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.VehicleCombinations.ToString("N0")</div>
+            <div class="stat__label">Vehicle combinations</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Makes.ToString("N0")</div>
+            <div class="stat__label">Makes</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.MileageShare</div>
+            <div class="stat__label">Complaints with a mileage reading</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.ModelYearSpan</div>
+            <div class="stat__label">Model years covered</div>
+        </div>
+    </div>
+    <p class="caveat">
+        A recall row is one campaign against one model and one model year, so a single campaign covering a whole
+        product line contributes many rows.
+    </p>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Most reported makes</h2>
+        <a class="panel__note" asp-controller="Makes" asp-action="Index">All @Model.Overview.Makes.ToString("N0") makes</a>
+    </div>
+    <div class="bars">
+        @foreach (var make in Model.TopMakes)
+        {
+            <div class="bar">
+                <a class="bar__label" asp-controller="Makes" asp-action="Details" asp-route-makeSlug="@make.Slug">@make.Name</a>
+                <span class="bar__track"><span class="bar__fill" style="width: @make.BarWidth"></span></span>
+                <span class="bar__value">@make.ComplaintCount.ToString("N0")</span>
+            </div>
+        }
+    </div>
+    <p class="caveat">
+        Complaints are filed voluntarily, so this ranks reporting volume, not reliability. A make that sold in
+        larger numbers collects more complaints regardless of how well it was built, and nothing here is
+        normalized by fleet size, because NHTSA does not publish how many vehicles are on the road.
+    </p>
+</section>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('form[data-cascade] select').forEach(function (field) {
+            field.addEventListener('change', function () {
+                if (field.value !== '') {
+                    field.form.submit();
+                }
+            });
+        });
+    </script>
+}

@@ -1,0 +1,68 @@
+@model MakeDetailsViewModel
+@{
+    ViewData["Title"] = Model.Make;
+}
+
+<nav class="breadcrumb">
+    <a asp-action="Index">Makes</a><span>@Model.Make</span>
+</nav>
+
+<div class="page-head">
+    <h1>@Model.Make</h1>
+    <p class="page-head__meta">
+        Every model filed under this make, ordered by complaint count. Pick one to choose a model year and open
+        its profile.
+    </p>
+</div>
+
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat__value">@Model.ComplaintCount.ToString("N0")</div>
+        <div class="stat__label">Complaints</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.Models.Count.ToString("N0")</div>
+        <div class="stat__label">Models</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.YearSpan</div>
+        <div class="stat__label">Model years covered</div>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Models</h2>
+        <p class="panel__note">Share is of this make, not of the whole database</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Model</th>
+                <th scope="col" class="num">Complaints</th>
+                <th scope="col" class="num">Share</th>
+                <th scope="col" class="num">Model years</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.Models)
+            {
+                <tr>
+                    <td>
+                        <a asp-controller="Home"
+                           asp-action="Index"
+                           asp-route-make="@Model.MakeSlug"
+                           asp-route-model="@row.Slug">@row.Name</a>
+                    </td>
+                    <td class="num">@row.ComplaintCount.ToString("N0")</td>
+                    <td class="num muted">@row.Share%</td>
+                    <td class="num muted">@row.YearSpan</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="caveat">
+        Model names come from the complaint forms as owners and NHTSA staff typed them, so trim levels and body
+        styles sometimes appear as separate models. Complaint counts are reporting volume, not failure rates.
+    </p>
+</section>
