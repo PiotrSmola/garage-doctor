@@ -35,6 +35,50 @@ public sealed class VehicleCatalogBuilderTests(MongoFixture fixture)
     }
 
     [Fact]
+    public async Task RecallCampaignsAreCountedOncePerVehicleEvenWhenTheySpanSeveralRows()
+    {
+        var context = CreateContext();
+        await SeedAsync(context, Sample());
+        await context.Recalls.InsertManyAsync(
+            [
+                Recall(1, "23V100000", "volkswagen|golf|2015"),
+                Recall(2, "23V100000", "volkswagen|golf|2015"),
+                Recall(3, "23V200000", "volkswagen|golf|2015"),
+                Recall(4, "23V300000", "audi|a3|2015"),
+                Recall(5, "23V400000", "porsche|911|2015")
+            ],
+            cancellationToken: CancellationToken.None);
+
+        await CreateBuilder(context).RebuildVehiclesAsync(CancellationToken.None);
+
+        Assert.Equal(2, (await RequireVehicleAsync(context, "volkswagen|golf|2015")).RecallCount);
+        Assert.Equal(1, (await RequireVehicleAsync(context, "audi|a3|2015")).RecallCount);
+        Assert.Equal(0, (await RequireVehicleAsync(context, "volkswagen|golf|2016")).RecallCount);
+        Assert.Null(await context.Vehicles
+            .Find(Builders<VehicleCatalogEntry>.Filter.Eq(entry => entry.Id, "porsche|911|2015"))
+            .FirstOrDefaultAsync(CancellationToken.None));
+    }
+
+    private static RecallCampaign Recall(int id, string campaignNumber, string vehicleKey) => new()
+    {
+        Id = id,
+        CampaignNumber = campaignNumber,
+        Manufacturer = "Fictional Motors USA, LLC",
+        Make = "VOLKSWAGEN",
+        MakeRaw = "VOLKSWAGEN",
+        Model = "GOLF",
+        ModelRaw = "GOLF",
+        ModelYear = 2015,
+        ComponentName = "POWER TRAIN",
+        ComponentGroup = "POWER TRAIN",
+        RecallType = "V",
+        DefectDescription = "Synthetic defect summary.",
+        Consequence = "Synthetic consequence summary.",
+        CorrectiveAction = "Synthetic corrective action.",
+        VehicleKey = vehicleKey
+    };
+
+    [Fact]
     public async Task VehicleSlugsMatchTheCanonicalSlugsEmbeddedInTheVehicleKey()
     {
         var context = CreateContext();

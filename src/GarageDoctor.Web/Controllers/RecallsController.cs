@@ -7,7 +7,6 @@ namespace GarageDoctor.Web.Controllers;
 [Route("recalls")]
 public sealed class RecallsController : Controller
 {
-    private const int SourceRowLimit = 400;
     private const int ModelRowLimit = 60;
 
     private readonly IRecallQueries _recalls;
@@ -62,10 +61,10 @@ public sealed class RecallsController : Controller
         {
             Campaign = campaign,
             Coverage = capped,
-            CombinationCount = campaign.Vehicles.Count,
+            CombinationCount = campaign.TotalVehicleCount,
+            ListedCombinationCount = campaign.Vehicles.Count,
             ModelRowCount = modelRowCount,
             ShownModelRowCount = capped.Sum(group => group.Models.Count),
-            SourceRowLimit = SourceRowLimit
         };
     }
 
@@ -92,12 +91,6 @@ public sealed class RecallsController : Controller
         return capped;
     }
 
-    private static RecalledYear ToYear(RecalledVehicle vehicle)
-    {
-        var parts = vehicle.VehicleKey.Split('|');
-
-        return parts.Length == 3
-            ? new RecalledYear(vehicle.ModelYear, parts[0], parts[1])
-            : new RecalledYear(vehicle.ModelYear, string.Empty, string.Empty);
-    }
+    private static RecalledYear ToYear(RecalledVehicle vehicle) =>
+        new(vehicle.ModelYear, vehicle.MakeSlug, vehicle.ModelSlug);
 }

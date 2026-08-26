@@ -28,6 +28,7 @@ public sealed class VehicleCatalogBuilder
         _logger.LogInformation("Rebuilding the vehicle catalog from {ComplaintCount} complaints", complaintCount);
 
         await RunAsync(VehiclePipeline(), cancellationToken).ConfigureAwait(false);
+        await RunRecallCountsAsync(cancellationToken).ConfigureAwait(false);
 
         var written = await _context.Vehicles
             .CountDocumentsAsync(FilterDefinition<VehicleCatalogEntry>.Empty, cancellationToken: cancellationToken)
@@ -57,6 +58,33 @@ public sealed class VehicleCatalogBuilder
 
     private Task<long> EstimatedComplaintCountAsync(CancellationToken cancellationToken) =>
         _context.Complaints.EstimatedDocumentCountAsync(cancellationToken: cancellationToken);
+
+    private Task RunRecallCountsAsync(CancellationToken cancellationToken) =>
+        _context.Recalls.AggregateToCollectionAsync(
+            PipelineDefinition<RecallCampaign, BsonDocument>.Create(RecallCountPipeline()),
+            Options,
+            cancellationToken);
+
+    private static BsonDocument[] RecallCountPipeline() =>
+    [
+        new("$group", new BsonDocument("_id", new BsonDocument
+        {
+            { "vehicleKey", "$vehicleKey" },
+            { "campaignNumber", "$campaignNumber" }
+        })),
+        new("$group", new BsonDocument
+        {
+            { "_id", "$_id.vehicleKey" },
+            { "recallCount", new BsonDocument("$sum", 1) }
+        }),
+        new("$merge", new BsonDocument
+        {
+            { "into", CollectionNames.Vehicles },
+            { "on", "_id" },
+            { "whenMatched", "merge" },
+            { "whenNotMatched", "discard" }
+        })
+    ];
 
     private Task RunAsync(BsonDocument[] stages, CancellationToken cancellationToken) =>
         _context.Complaints.AggregateToCollectionAsync(

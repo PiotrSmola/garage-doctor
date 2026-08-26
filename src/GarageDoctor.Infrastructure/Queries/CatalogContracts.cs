@@ -44,7 +44,13 @@ public sealed record ComplaintSummary(
     int Injured,
     int Deaths);
 
-public sealed record RecalledVehicle(string Make, string Model, int? ModelYear, string VehicleKey);
+public sealed record RecalledVehicle(
+    string Make,
+    string Model,
+    int? ModelYear,
+    string VehicleKey,
+    string MakeSlug,
+    string ModelSlug);
 
 public sealed record RecallCampaignDetail(
     string CampaignNumber,
@@ -59,7 +65,8 @@ public sealed record RecallCampaignDetail(
     int? PotentiallyAffected,
     DateOnly? ReportReceivedDate,
     DateOnly? OwnersNotifiedDate,
-    IReadOnlyList<RecalledVehicle> Vehicles);
+    IReadOnlyList<RecalledVehicle> Vehicles,
+    int TotalVehicleCount);
 
 public interface IVehicleCatalogQueries
 {

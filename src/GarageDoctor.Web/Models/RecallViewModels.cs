@@ -26,13 +26,13 @@ public sealed record RecallDetailViewModel
 
     public required int ShownModelRowCount { get; init; }
 
-    public required int SourceRowLimit { get; init; }
+    public required int ListedCombinationCount { get; init; }
 
     public bool HasAdvisory => Campaign.DoNotDrive || Campaign.ParkOutside;
 
     public bool CoverageCapped => ShownModelRowCount < ModelRowCount;
 
-    public bool SourceRowLimitReached => CombinationCount >= SourceRowLimit;
+    public bool SourceRowLimitReached => ListedCombinationCount < CombinationCount;
 
     public bool HasCoverage => Coverage.Count > 0;
 }

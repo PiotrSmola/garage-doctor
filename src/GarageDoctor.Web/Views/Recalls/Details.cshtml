@@ -63,7 +63,7 @@
     </div>
     <div class="stat">
         <div class="stat__value">@Formats.Number(Model.CombinationCount)</div>
-        <div class="stat__label">Model-year combinations listed</div>
+        <div class="stat__label">Model-year combinations covered</div>
     </div>
     <div class="stat">
         <div class="stat__value">@Formats.DateOrDash(campaign.ReportReceivedDate)</div>
@@ -130,8 +130,8 @@
     <div class="panel__head">
         <h2>Vehicles covered</h2>
         <span class="panel__note">
-            @Formats.Number(Model.CombinationCount) combinations listed across
-            @Formats.Number(Model.Coverage.Count) @(Model.Coverage.Count == 1 ? "make" : "makes")
+            @Formats.Number(Model.ListedCombinationCount) of @Formats.Number(Model.CombinationCount)
+            combinations listed, across @Formats.Number(Model.Coverage.Count) @(Model.Coverage.Count == 1 ? "make" : "makes")
         </span>
     </div>
 
@@ -140,9 +140,9 @@
         <div class="notice notice--caution">
             <div class="notice__title">This list is incomplete</div>
             <p>
-                The read behind this page stops at @Formats.Number(Model.SourceRowLimit) source
-                rows, and this campaign reached that limit. It covers more vehicles than are shown
-                below. Check the campaign number against your own vehicle identification number
+                This campaign covers @Formats.Number(Model.CombinationCount) model-year
+                combinations and the page lists the first @Formats.Number(Model.ListedCombinationCount)
+                of them. Check the campaign number against your own vehicle identification number
                 rather than assuming a car is unaffected because it is missing here.
             </p>
         </div>
@@ -201,9 +201,8 @@
                     @Formats.Number(Model.ModelRowCount) model rows.
                 </text>
             }
-            Coverage is built from at most @Formats.Number(Model.SourceRowLimit) source rows per
-            campaign, so for the few very large campaigns this list is a subset rather than the
-            complete roster.
+            The combination count is measured across the whole campaign, so for the few very large
+            campaigns the roster below is a subset while the count above is not.
         </p>
     }
 </section>
