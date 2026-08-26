@@ -1,0 +1,258 @@
+@model ComponentDetailViewModel
+@{
+    ViewData["Title"] = Model.Group;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/components.css" asp-append-version="true" />
+}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    <a asp-action="Index">Components</a><span>@Model.Group</span>
+</nav>
+
+<header class="page-head">
+    <p class="eyebrow">Component group</p>
+    <h1 class="component-title">@Model.Group</h1>
+    <p class="page-head__meta">
+        <span class="num">@Model.ComplaintCount.ToString("N0")</span> complaints are filed under this group,
+        and @Model.MileageCoverageLabel% of them recorded an odometer reading.
+    </p>
+</header>
+
+<div class="stat-row component-stats">
+    <div class="stat">
+        <div class="stat__value">@Model.ComplaintCount.ToString("N0")</div>
+        <div class="stat__label">Complaints in this group</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.WithMileage.ToString("N0")</div>
+        <div class="stat__label">Of those, with a mileage</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.RawTopLevels.Count.ToString("N0")</div>
+        <div class="stat__label">Raw NHTSA categories folded in</div>
+    </div>
+</div>
+
+<section class="panel" id="naming" aria-labelledby="naming-heading">
+    <div class="panel__head">
+        <h2 id="naming-heading">What NHTSA calls it</h2>
+        <p class="panel__note">Raw top-level categories</p>
+    </div>
+
+    @if (!Model.HasRawTopLevels)
+    {
+        <div class="empty">
+            These complaints reached the database with the component field empty, so there is no NHTSA category
+            behind them. They are grouped together only so that they stay visible and countable.
+        </div>
+    }
+    else
+    {
+        <p class="muted">
+            @if (Model.IsMerged)
+            {
+                <text>
+                    These @Model.RawTopLevels.Count NHTSA category names all fold into this one group. The merge
+                    is a hand-edited decision, not something the source data does for you, so it is written out
+                    here in full and you can judge it yourself.
+                </text>
+            }
+            else
+            {
+                <text>
+                    This group carries a single NHTSA category name and nothing was merged into it. It is listed
+                    here anyway so that every group page can be read the same way.
+                </text>
+            }
+        </p>
+
+        <ul class="raw-names">
+            @foreach (var name in Model.RawTopLevels)
+            {
+                <li>@name</li>
+            }
+        </ul>
+    }
+</section>
+
+<section class="panel" id="makes" aria-labelledby="makes-heading">
+    <div class="panel__head">
+        <h2 id="makes-heading">Which makes report it most</h2>
+        <p class="panel__note">Top @Model.Makes.Count by raw volume</p>
+    </div>
+
+    @if (!Model.HasMakes)
+    {
+        <div class="empty">No make carries a complaint in this group.</div>
+    }
+    else
+    {
+        <div class="notice">
+            <p>
+                This ranks makes by how many complaints were filed, and nothing else. Nothing divides by how many
+                cars a maker sold or how far they were driven, so this list mostly measures market share: a maker
+                that put millions of cars on American roads collects more reports than one that sold a few
+                thousand, however well either of them was built. Read it as where the reports come from, not as a
+                league table of quality.
+            </p>
+        </div>
+
+        <div class="bars make-list">
+            <div class="bar bar--head">
+                <span class="bar__label">Make</span>
+                <span></span>
+                <span class="bar__value">Reports</span>
+                <span class="bar__share">Share</span>
+            </div>
+            @foreach (var make in Model.Makes)
+            {
+                <div class="bar">
+                    <span class="bar__label">
+                        <a asp-controller="Makes"
+                           asp-action="Details"
+                           asp-route-makeSlug="@make.MakeSlug"
+                           title="@make.Make">@make.Make</a>
+                    </span>
+                    <span class="bar__track"><span class="bar__fill" style="width: @make.WidthPercent%"></span></span>
+                    <span class="bar__value">@make.ComplaintCount.ToString("N0")</span>
+                    <span class="bar__share">@make.ShareLabel%</span>
+                </div>
+            }
+        </div>
+
+        <p class="caveat">
+            Shares are of the @Model.ComplaintCount.ToString("N0") complaints in this group. Bar length is
+            relative to the leading make.
+        </p>
+    }
+</section>
+
+<section class="panel" id="vehicles" aria-labelledby="vehicles-heading">
+    <div class="panel__head">
+        <h2 id="vehicles-heading">Which exact vehicles report it most</h2>
+        <p class="panel__note">Top @Model.Vehicles.Count by raw volume</p>
+    </div>
+
+    @if (!Model.HasVehicles)
+    {
+        <div class="empty">No single model year carries enough complaints in this group to rank.</div>
+    }
+    else
+    {
+        <p class="muted">
+            The same caveat applies as above, and it bites harder here: a model year that sold in huge numbers
+            will outrank a rare one on volume alone. What this list is good for is the opposite direction. A
+            model year appearing here that you would not expect from its sales figures is worth opening, and
+            every row links to the full failure profile for that car.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th scope="col">Vehicle</th>
+                    <th scope="col" class="num">Reports</th>
+                    <th scope="col" class="num">Share of group</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var vehicle in Model.Vehicles)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Vehicles"
+                               asp-action="Profile"
+                               asp-route-makeSlug="@vehicle.MakeSlug"
+                               asp-route-modelSlug="@vehicle.ModelSlug"
+                               asp-route-modelYear="@vehicle.ModelYear">@vehicle.DisplayName</a>
+                        </td>
+                        <td class="num">@vehicle.ComplaintCount.ToString("N0")</td>
+                        <td class="num muted">@vehicle.ShareLabel%</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <p class="caveat">
+            One row is one model year of one model, not a model line. Shares are of the
+            @Model.ComplaintCount.ToString("N0") complaints in this group, so they are small by construction:
+            this group is spread across every make and year on file.
+        </p>
+    }
+</section>
+
+<section class="panel" id="mileage" aria-labelledby="mileage-heading">
+    <div class="panel__head">
+        <h2 id="mileage-heading">When it fails</h2>
+        <p class="panel__note">@Model.SampleLine</p>
+    </div>
+
+    @if (!Model.HasSample)
+    {
+        <div class="empty">
+            Not one complaint in this group carried an odometer reading, so there is no distribution to draw.
+        </div>
+    }
+    else
+    {
+        @if (Model.HasThinSample)
+        {
+            <div class="notice notice--caution">
+                <p class="notice__title">Thin sample</p>
+                <p>
+                    Only @Model.WithMileage.ToString("N0") reports in this group carry an odometer reading. The
+                    bars are drawn for completeness, not as a pattern, and a shape read from this few records is
+                    noise.
+                </p>
+            </div>
+        }
+        else
+        {
+            <p class="muted">@Model.ShapeLine</p>
+        }
+
+        <div class="bars histogram">
+            <div class="bar bar--head">
+                <span class="bar__label">Miles at failure</span>
+                <span></span>
+                <span class="bar__value">Reports</span>
+                <span class="bar__share">Share</span>
+            </div>
+            @foreach (var bucket in Model.Buckets)
+            {
+                <div class="bar">
+                    <span class="bar__label">@bucket.Label</span>
+                    <span class="bar__track"><span class="bar__fill" style="width: @bucket.WidthPercent%"></span></span>
+                    <span class="bar__value">@bucket.Count.ToString("N0")</span>
+                    <span class="bar__share">@bucket.ShareLabel</span>
+                </div>
+            }
+        </div>
+
+        <p class="caveat">
+            Buckets are 25,000 miles wide and the last one is open ended. Shares are of the
+            @Model.WithMileage.ToString("N0") reports that recorded an odometer reading, not of all
+            @Model.ComplaintCount.ToString("N0") complaints in the group. Owners type the mileage themselves, so
+            round numbers are over-represented, and the first bucket is swollen everywhere because a car under
+            warranty is the one whose owner bothers to file. Groups that only exist on recent vehicles, such as
+            the driver assistance electronics, skew early for a duller reason: those cars have not had time to
+            reach 100,000 miles.
+        </p>
+    }
+</section>
+
+<section class="panel" id="reports" aria-labelledby="reports-heading">
+    <div class="panel__head">
+        <h2 id="reports-heading">Read the reports themselves</h2>
+        <p class="panel__note">Full text search</p>
+    </div>
+    <p>
+        Counts and bars say how often and roughly when. They do not say what actually happened, and the
+        narratives do. Search opens every complaint filed under this group, in the owner's own words, filtered
+        down to <span class="num">@Model.ComplaintCount.ToString("N0")</span> reports.
+    </p>
+    <p>
+        <a class="button button--quiet" href="@Model.SearchPath">Search @Model.Group complaints</a>
+    </p>
+</section>
