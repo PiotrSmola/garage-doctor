@@ -34,6 +34,27 @@ public sealed record VehicleIdentity(
     string ModelSlug,
     int ModelYear);
 
+public sealed record VehicleRanking(
+    string VehicleKey,
+    string Make,
+    string MakeSlug,
+    string Model,
+    string ModelSlug,
+    int ModelYear,
+    int TotalComplaints,
+    int WithMileage);
+
+public sealed record ComponentGroupSummary(string Group, string Slug, int ComplaintCount);
+
+public sealed record ConsumerAdvisory(
+    string CampaignNumber,
+    string Make,
+    string ComponentName,
+    bool DoNotDrive,
+    bool ParkOutside,
+    DateOnly? ReportReceivedDate,
+    int VehicleCount);
+
 public sealed record ComplaintSummary(
     int Id,
     DateOnly ReceivedDate,
@@ -88,6 +109,13 @@ public interface IVehicleCatalogQueries
         string modelSlug,
         int modelYear,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<VehicleRanking>> GetMostReportedVehiclesAsync(
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ComponentGroupSummary>> GetComponentGroupsAsync(
+        CancellationToken cancellationToken = default);
 }
 
 public interface IVehicleProfileQueries
@@ -108,5 +136,9 @@ public interface IRecallQueries
 
     Task<RecallCampaignDetail?> GetByCampaignNumberAsync(
         string campaignNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ConsumerAdvisory>> GetLatestAdvisoriesAsync(
+        int limit,
         CancellationToken cancellationToken = default);
 }

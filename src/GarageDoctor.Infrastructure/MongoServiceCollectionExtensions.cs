@@ -22,6 +22,8 @@ public static class MongoServiceCollectionExtensions
         services.AddSingleton<IVehicleCatalogQueries, MongoVehicleCatalogQueries>();
         services.AddSingleton<IVehicleProfileQueries, MongoVehicleProfileQueries>();
         services.AddSingleton<IRecallQueries, MongoRecallQueries>();
+        services.AddSingleton<ISearchQueries, MongoSearchQueries>();
+        services.AddSingleton<IComponentQueries, MongoComponentQueries>();
 
         return services;
     }

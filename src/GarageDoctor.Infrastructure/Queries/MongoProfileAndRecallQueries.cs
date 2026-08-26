@@ -139,6 +139,52 @@ public sealed class MongoRecallQueries : IRecallQueries
             counts.Count == 0 ? vehicles.Count : counts[0].AsBsonDocument["total"].ToInt32());
     }
 
+    public async Task<IReadOnlyList<ConsumerAdvisory>> GetLatestAdvisoriesAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var pipeline = new[]
+        {
+            new BsonDocument("$match", new BsonDocument("$or", new BsonArray
+            {
+                new BsonDocument("doNotDrive", true),
+                new BsonDocument("parkOutside", true)
+            })),
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", "$campaignNumber" },
+                { "make", new BsonDocument("$first", "$make") },
+                { "componentName", new BsonDocument("$first", "$componentName") },
+                { "doNotDrive", new BsonDocument("$max", "$doNotDrive") },
+                { "parkOutside", new BsonDocument("$max", "$parkOutside") },
+                { "reportReceivedDate", new BsonDocument("$max", "$reportReceivedDate") },
+                { "vehicleKeys", new BsonDocument("$addToSet", "$vehicleKey") }
+            }),
+            new BsonDocument("$sort", new BsonDocument("reportReceivedDate", -1)),
+            new BsonDocument("$limit", limit)
+        };
+
+        var advisories = await _context.Recalls
+            .Aggregate<BsonDocument>(pipeline, new AggregateOptions { AllowDiskUse = true }, cancellationToken)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return advisories
+            .Select(document => new ConsumerAdvisory(
+                document["_id"].AsString,
+                document["make"].AsString,
+                document["componentName"].AsString,
+                document["doNotDrive"].ToBoolean(),
+                document["parkOutside"].ToBoolean(),
+                document["reportReceivedDate"].IsBsonNull
+                    ? null
+                    : DateOnly.FromDateTime(document["reportReceivedDate"].ToUniversalTime()),
+                document["vehicleKeys"].AsBsonArray.Count))
+            .ToList();
+    }
+
     private static BsonArray SummaryStages() =>
     [
         new BsonDocument("$sort", new BsonDocument("_id", 1)),

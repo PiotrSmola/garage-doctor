@@ -150,6 +150,55 @@ public sealed class MongoVehicleCatalogQueries : IVehicleCatalogQueries
             .ToList();
     }
 
+    public async Task<IReadOnlyList<VehicleRanking>> GetMostReportedVehiclesAsync(
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
+
+        var profiles = await _context.Profiles
+            .Find(FilterDefinition<VehicleProfile>.Empty)
+            .SortByDescending(profile => profile.TotalComplaints)
+            .Limit(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return profiles
+            .Select(profile => new VehicleRanking(
+                profile.VehicleKey,
+                profile.Make,
+                SlugAt(profile.VehicleKey, 0),
+                profile.Model,
+                SlugAt(profile.VehicleKey, 1),
+                profile.ModelYear,
+                profile.TotalComplaints,
+                profile.WithMileage))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<ComponentGroupSummary>> GetComponentGroupsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var groups = await _context.Components
+            .Find(FilterDefinition<ComponentTaxonomyEntry>.Empty)
+            .SortByDescending(entry => entry.ComplaintCount)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return groups
+            .Select(entry => new ComponentGroupSummary(
+                entry.Group,
+                Domain.Canonicalization.VehicleKey.Slug(entry.Group),
+                entry.ComplaintCount))
+            .ToList();
+    }
+
+    private static string SlugAt(string vehicleKey, int position)
+    {
+        var segments = vehicleKey.Split('|');
+        return position < segments.Length ? segments[position] : string.Empty;
+    }
+
     public async Task<VehicleIdentity?> ResolveVehicleAsync(
         string makeSlug,
         string modelSlug,
