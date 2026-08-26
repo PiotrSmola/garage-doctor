@@ -1,0 +1,124 @@
+@model VehicleProfilePageViewModel
+@{
+    ViewData["Title"] = Model.DisplayName;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/profile.css" asp-append-version="true" />
+}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/makes">Makes</a>
+    <span><a href="/makes/@Model.Vehicle.MakeSlug">@Model.Vehicle.Make</a></span>
+    <span>@Model.Vehicle.Model</span>
+    <span>@Model.Vehicle.ModelYear</span>
+</nav>
+
+<header class="page-head">
+    <p class="eyebrow">Failure profile</p>
+    <h1>@Model.Vehicle.Make @Model.Vehicle.Model @Model.Vehicle.ModelYear</h1>
+    <p class="page-head__meta">
+        <span class="num">@Model.Profile.TotalComplaints.ToString("N0")</span> complaints on record, @Model.ReportSpan.
+    </p>
+</header>
+
+<div class="stat-row profile-stats">
+    <div class="stat">
+        <div class="stat__value">@Model.Profile.TotalComplaints.ToString("N0")</div>
+        <div class="stat__label">Complaints filed</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.Profile.WithMileage.ToString("N0")</div>
+        <div class="stat__label">Of those, with a mileage</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.AverageMileageLabel</div>
+        <div class="stat__label">Average miles at failure</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Model.ComponentGroupCount.ToString("N0")</div>
+        <div class="stat__label">Component groups hit</div>
+    </div>
+</div>
+
+<div class="notice profile-caveat">
+    <p class="notice__title">Read these numbers as reports, not as a failure rate</p>
+    <p>
+        Every figure on this page comes from complaints that owners chose to file with NHTSA. Nothing here is
+        normalized by how many cars were sold or how far they were driven, so a model built in large numbers
+        collects more complaints than a rare one regardless of how well it was made. Use the page to see
+        <em>what</em> fails and roughly <em>when</em>, not to rank one car against another.
+    </p>
+</div>
+
+@if (Model.HasSmallSample)
+{
+    <div class="notice notice--caution">
+        <p class="notice__title">Small sample</p>
+        <p>
+            This model year has only @Model.Profile.TotalComplaints.ToString("N0") complaints on record. That is
+            too few to support a confident distribution, so treat the charts below as a handful of anecdotes
+            rather than as evidence about the model.
+        </p>
+    </div>
+}
+
+@await Component.InvokeAsync("SeveritySignals", new { profile = Model.Profile })
+
+@await Component.InvokeAsync("MileageHistogram", new { profile = Model.Profile })
+
+@await Component.InvokeAsync("ComponentBreakdown", new { profile = Model.Profile })
+
+@await Component.InvokeAsync("ComplaintTimeline", new { profile = Model.Profile })
+
+@await Component.InvokeAsync("VehicleRecalls", new { vehicleKey = Model.Vehicle.VehicleKey })
+
+<section class="panel" id="reports" aria-labelledby="reports-heading">
+    <div class="panel__head">
+        <h2 id="reports-heading">Most recent reports</h2>
+        <p class="panel__note">
+            @Model.RecentComplaints.Count.ToString("N0") newest of
+            <span class="num">@Model.Profile.TotalComplaints.ToString("N0")</span>
+        </p>
+    </div>
+
+    @if (Model.RecentComplaints.Count == 0)
+    {
+        <div class="empty">No complaint narratives are stored for this vehicle.</div>
+    }
+    else
+    {
+        @foreach (var report in Model.RecentComplaints)
+        {
+            var outcomeClass = report.Severe
+                ? "report__outcomes report__outcomes--severe"
+                : "report__outcomes";
+
+            <article class="narrative report">
+                <p class="narrative__meta">
+                    @report.ReceivedDate.ToString("yyyy-MM-dd") &#183; @report.MileageLabel &#183; @report.ComponentGroup
+                </p>
+                <p>@report.Narrative</p>
+                @if (report.HasDetailLine)
+                {
+                    <p class="report__detail">@report.DetailLine</p>
+                }
+                @if (report.Outcomes.Count > 0)
+                {
+                    <p class="@outcomeClass">@string.Join(", ", report.Outcomes)</p>
+                }
+            </article>
+        }
+
+        <p class="caveat">
+            Narratives are reproduced as the owner typed them, minus every contact field NHTSA publishes.
+            Dealer names, telephone numbers, addresses, the reporter city and the partial vehicle identification
+            number are dropped during ingest and never reach this database.
+        </p>
+    }
+</section>
+
+@section Scripts {
+    <script src="~/lib/chartjs/chart.umd.js" asp-append-version="true"></script>
+    <script src="~/js/timeline-chart.js" asp-append-version="true"></script>
+}
