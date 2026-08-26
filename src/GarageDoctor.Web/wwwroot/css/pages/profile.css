@@ -1,0 +1,188 @@
+[hidden] {
+    display: none !important;
+}
+
+.panel > p:last-child,
+.notice > p:last-child,
+.narrative > p:last-child {
+    margin-bottom: 0;
+}
+
+.panel__head .panel__note {
+    margin: 0;
+    text-align: right;
+}
+
+.profile-stats {
+    margin-bottom: 1.5rem;
+}
+
+.stat--alert .stat__value {
+    color: var(--accent);
+}
+
+.profile-caveat em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.histogram .bar,
+.components .bar {
+    grid-template-columns: minmax(6rem, 11rem) 1fr minmax(3.5rem, auto) minmax(3rem, auto);
+}
+
+.bar__share {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--ink-3);
+}
+
+.bar--head {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 0.25rem;
+}
+
+.bar--head .bar__label,
+.bar--head .bar__value,
+.bar--head .bar__share {
+    color: var(--ink-3);
+    font-family: inherit;
+    letter-spacing: inherit;
+}
+
+.histogram .bar__label {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.histogram .bar--head .bar__label {
+    font-family: inherit;
+}
+
+.chart-frame {
+    position: relative;
+    height: 17rem;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-table .bar__track {
+    display: block;
+    width: 100%;
+    min-width: 6rem;
+}
+
+.recall-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.recall {
+    border-top: 1px solid var(--rule);
+    padding: 1rem 0;
+}
+
+.recall:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.recall:last-child {
+    padding-bottom: 0;
+}
+
+.recall__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.recall__id {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+}
+
+.recall__date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-3);
+    white-space: nowrap;
+}
+
+.recall__component {
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    margin: 0.3rem 0 0.55rem;
+}
+
+.recall__component .eyebrow {
+    margin-right: 0.55rem;
+}
+
+.recall__text {
+    font-size: 0.9rem;
+    color: var(--ink-2);
+    margin-bottom: 0.45rem;
+}
+
+.recall__figure {
+    font-size: 0.82rem;
+    color: var(--ink-3);
+    margin-bottom: 0;
+}
+
+.report {
+    margin-bottom: 1.4rem;
+}
+
+.report:last-of-type {
+    margin-bottom: 0;
+}
+
+.report__detail {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-3);
+    margin: 0.35rem 0 0;
+}
+
+.report__outcomes {
+    font-size: 0.82rem;
+    color: var(--ink-3);
+    margin: 0.2rem 0 0;
+}
+
+.report__outcomes--severe {
+    color: var(--accent);
+}
+
+@media (max-width: 40rem) {
+    .histogram .bar,
+    .components .bar {
+        grid-template-columns: minmax(4.5rem, 7rem) 1fr minmax(2.75rem, auto) minmax(2.5rem, auto);
+    }
+
+    .panel__head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    .panel__head .panel__note {
+        text-align: left;
+    }
+
+    .chart-frame {
+        height: 13rem;
+    }
+}

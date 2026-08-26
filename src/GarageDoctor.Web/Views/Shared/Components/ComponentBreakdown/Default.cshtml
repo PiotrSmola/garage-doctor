@@ -1,0 +1,42 @@
+@model ComponentBreakdownViewModel
+
+<section class="panel" id="components" aria-labelledby="components-heading">
+    <div class="panel__head">
+        <h2 id="components-heading">What owners complained about</h2>
+        <p class="panel__note">
+            @Model.Groups.Count.ToString("N0") component groups across
+            <span class="num">@Model.TotalComplaints.ToString("N0")</span> reports
+        </p>
+    </div>
+
+    @if (!Model.HasGroups)
+    {
+        <div class="empty">No complaint for this vehicle carries a component classification.</div>
+    }
+    else
+    {
+        <div class="bars components">
+            <div class="bar bar--head">
+                <span class="bar__label">Component group</span>
+                <span></span>
+                <span class="bar__value">Reports</span>
+                <span class="bar__share">Share</span>
+            </div>
+            @foreach (var group in Model.Groups)
+            {
+                <div class="bar bar--alt">
+                    <span class="bar__label" title="@group.Group">@group.Group</span>
+                    <span class="bar__track"><span class="bar__fill" style="width: @group.WidthPercent%"></span></span>
+                    <span class="bar__value">@group.Count.ToString("N0")</span>
+                    <span class="bar__share">@group.ShareLabel</span>
+                </div>
+            }
+        </div>
+
+        <p class="caveat">
+            NHTSA has changed its component vocabulary repeatedly since 1995, so the 55 raw categories in the
+            source file are merged into these canonical groups during ingest. One complaint counts once, under
+            the top level of its component path. Bar length is relative to the largest group, not to the total.
+        </p>
+    }
+</section>
