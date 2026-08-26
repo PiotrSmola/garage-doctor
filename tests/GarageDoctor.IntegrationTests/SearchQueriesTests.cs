@@ -26,7 +26,7 @@ public sealed class SearchQueriesTests(MongoFixture fixture)
     }
 
     [Fact]
-    public async Task FilteredSearchSwitchesToScopedMatchingAndNarrowsByMake()
+    public async Task FilteredSearchKeepsTheTextIndexAndNarrowsByMake()
     {
         var context = await SeededContextAsync();
 
@@ -34,19 +34,19 @@ public sealed class SearchQueriesTests(MongoFixture fixture)
             new ComplaintSearchRequest { Term = "shudder", MakeSlug = "volkswagen" },
             CancellationToken.None);
 
-        Assert.Equal(SearchMode.ScopedPhrase, result.Mode);
+        Assert.Equal(SearchMode.FullText, result.Mode);
         Assert.Single(result.Hits);
         Assert.Equal("VOLKSWAGEN", result.Hits[0].Make);
         Assert.Equal("volkswagen", result.Hits[0].MakeSlug);
     }
 
     [Fact]
-    public async Task ScopedMatchingTreatsTheTermAsLiteralTextRatherThanAPattern()
+    public async Task ATermThatMatchesNoWholeWordReturnsNothing()
     {
         var context = await SeededContextAsync();
 
         var result = await new MongoSearchQueries(context).SearchAsync(
-            new ComplaintSearchRequest { Term = "shud.er", MakeSlug = "volkswagen" },
+            new ComplaintSearchRequest { Term = "shud", MakeSlug = "volkswagen" },
             CancellationToken.None);
 
         Assert.Empty(result.Hits);

@@ -29,7 +29,7 @@ public sealed class MongoSearchQueries : ISearchQueries
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, MaxPageSize);
         var term = request.Term?.Trim();
-        var mode = ResolveMode(term, request.HasFilters);
+        var mode = ResolveMode(term);
 
         if (mode == SearchMode.None && !request.HasFilters)
         {
@@ -58,15 +58,8 @@ public sealed class MongoSearchQueries : ISearchQueries
             pageSize);
     }
 
-    private static SearchMode ResolveMode(string? term, bool hasFilters)
-    {
-        if (string.IsNullOrWhiteSpace(term))
-        {
-            return SearchMode.None;
-        }
-
-        return hasFilters ? SearchMode.ScopedPhrase : SearchMode.FullText;
-    }
+    private static SearchMode ResolveMode(string? term) =>
+        string.IsNullOrWhiteSpace(term) ? SearchMode.None : SearchMode.FullText;
 
     private static FilterDefinition<Complaint> BuildFilter(
         ComplaintSearchRequest request,
@@ -78,13 +71,6 @@ public sealed class MongoSearchQueries : ISearchQueries
         if (mode == SearchMode.FullText && term is not null)
         {
             clauses.Add(Filter.Text(term));
-        }
-
-        if (mode == SearchMode.ScopedPhrase && term is not null)
-        {
-            clauses.Add(Filter.Regex(
-                complaint => complaint.Description,
-                new BsonRegularExpression(Regex.Escape(term), "i")));
         }
 
         if (!string.IsNullOrWhiteSpace(request.MakeSlug))

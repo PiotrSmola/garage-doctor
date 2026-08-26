@@ -5,8 +5,7 @@ namespace GarageDoctor.Infrastructure.Queries;
 public enum SearchMode
 {
     None,
-    FullText,
-    ScopedPhrase
+    FullText
 }
 
 public sealed record ComplaintSearchRequest

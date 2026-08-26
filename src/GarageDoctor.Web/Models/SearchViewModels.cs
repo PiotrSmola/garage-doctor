@@ -81,7 +81,7 @@ public static class NarrativeHighlighter
             return matches;
         }
 
-        if (mode == SearchMode.ScopedPhrase)
+        if (mode == SearchMode.None)
         {
             var index = text.IndexOf(trimmed, StringComparison.OrdinalIgnoreCase);
 
@@ -455,7 +455,6 @@ public sealed record SearchPageViewModel
     public string ModeHeadline => Mode switch
     {
         SearchMode.FullText => "Whole word search across every narrative",
-        SearchMode.ScopedPhrase => "Literal substring search inside the filtered set",
         _ => "Filtered listing, no search term"
     };
 
@@ -464,9 +463,6 @@ public sealed record SearchPageViewModel
         SearchMode.FullText =>
             "Whole words anywhere in a narrative, stemmed, so brakes also finds brake. These are matches in "
             + "database order, not ranked by relevance.",
-        SearchMode.ScopedPhrase =>
-            "Inside the filtered set the term is matched as a literal, case insensitive substring, so it also "
-            + "hits inside longer words. These are matches in database order, not ranked by relevance.",
         _ =>
             "Every complaint that matches the filters, in database order. Add a term to search the narratives "
             + "themselves."
@@ -478,9 +474,6 @@ public sealed record SearchPageViewModel
             "Relevance ranking is left out on purpose. The text index runs to 745 MB over 2.2 GB of narratives, "
             + "so returning a page of matches takes tens of milliseconds, while sorting the same query by text "
             + "score takes 11 to 44 seconds.",
-        SearchMode.ScopedPhrase =>
-            "A filtered search runs through the vehicle and component indexes rather than the text index, which "
-            + "is what makes an exact count affordable here.",
         _ => null
     };
 
