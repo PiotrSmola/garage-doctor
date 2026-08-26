@@ -75,13 +75,28 @@ public interface ISearchQueries
         CancellationToken cancellationToken = default);
 }
 
+public sealed record ComponentVehicleRanking(
+    string VehicleKey,
+    string Make,
+    string MakeSlug,
+    string Model,
+    string ModelSlug,
+    int ModelYear,
+    int GroupComplaintCount,
+    int TotalComplaints)
+{
+    public double ShareOfVehicleComplaints => TotalComplaints <= 0
+        ? 0
+        : GroupComplaintCount * 100d / TotalComplaints;
+}
+
 public sealed record ComponentDetail(
     string Group,
     string Slug,
     int ComplaintCount,
     IReadOnlyList<string> RawTopLevels,
     IReadOnlyList<MakeSummary> TopMakes,
-    IReadOnlyList<VehicleRanking> TopVehicles,
+    IReadOnlyList<ComponentVehicleRanking> TopVehicles,
     IReadOnlyList<MileageBucket> MileageHistogram,
     int WithMileage);
 

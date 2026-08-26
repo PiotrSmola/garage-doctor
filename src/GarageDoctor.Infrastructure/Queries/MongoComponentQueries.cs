@@ -28,7 +28,11 @@ public sealed class MongoComponentQueries : IComponentQueries
             .ConfigureAwait(false);
 
         return groups
-            .Select(entry => new ComponentGroupSummary(entry.Group, VehicleKey.Slug(entry.Group), entry.ComplaintCount))
+            .Select(entry => new ComponentGroupSummary(
+                entry.Group,
+                VehicleKey.Slug(entry.Group),
+                entry.ComplaintCount,
+                entry.TopLevels))
             .ToList();
     }
 
@@ -91,7 +95,7 @@ public sealed class MongoComponentQueries : IComponentQueries
             .ToList();
     }
 
-    private async Task<IReadOnlyList<VehicleRanking>> TopVehiclesAsync(string group, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ComponentVehicleRanking>> TopVehiclesAsync(string group, CancellationToken cancellationToken)
     {
         BsonDocument[] stages =
         [
@@ -104,7 +108,7 @@ public sealed class MongoComponentQueries : IComponentQueries
                 { "make", 1 },
                 { "model", 1 },
                 { "modelYear", 1 },
-                { "withMileage", 1 },
+                { "totalComplaints", 1 },
                 { "count", "$components.count" }
             })
         ];
@@ -115,7 +119,7 @@ public sealed class MongoComponentQueries : IComponentQueries
             .ConfigureAwait(false);
 
         return results
-            .Select(document => new VehicleRanking(
+            .Select(document => new ComponentVehicleRanking(
                 document["_id"].AsString,
                 document["make"].AsString,
                 SlugAt(document["_id"].AsString, 0),
@@ -123,7 +127,7 @@ public sealed class MongoComponentQueries : IComponentQueries
                 SlugAt(document["_id"].AsString, 1),
                 document["modelYear"].ToInt32(),
                 document["count"].ToInt32(),
-                document["withMileage"].ToInt32()))
+                document["totalComplaints"].ToInt32()))
             .ToList();
     }
 

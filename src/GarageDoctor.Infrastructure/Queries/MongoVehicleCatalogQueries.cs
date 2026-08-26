@@ -189,7 +189,8 @@ public sealed class MongoVehicleCatalogQueries : IVehicleCatalogQueries
             .Select(entry => new ComponentGroupSummary(
                 entry.Group,
                 Domain.Canonicalization.VehicleKey.Slug(entry.Group),
-                entry.ComplaintCount))
+                entry.ComplaintCount,
+                entry.TopLevels))
             .ToList();
     }
 

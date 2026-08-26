@@ -154,6 +154,7 @@
                     <th scope="col">Vehicle</th>
                     <th scope="col" class="num">Reports</th>
                     <th scope="col" class="num">Share of group</th>
+                    <th scope="col" class="num">Of that car's reports</th>
                 </tr>
             </thead>
             <tbody>
@@ -169,15 +170,17 @@
                         </td>
                         <td class="num">@vehicle.ComplaintCount.ToString("N0")</td>
                         <td class="num muted">@vehicle.ShareLabel%</td>
+                        <td class="num">@vehicle.VehicleShareLabel%</td>
                     </tr>
                 }
             </tbody>
         </table>
 
         <p class="caveat">
-            One row is one model year of one model, not a model line. Shares are of the
-            @Model.ComplaintCount.ToString("N0") complaints in this group, so they are small by construction:
-            this group is spread across every make and year on file.
+            One row is one model year of one model, not a model line. The middle column is the share of the
+            @Model.ComplaintCount.ToString("N0") complaints in this group, which is small by construction because
+            the group is spread across every make and year on file. The last column is the more telling one: how
+            much of that particular car's own complaint record this component accounts for.
         </p>
     }
 </section>

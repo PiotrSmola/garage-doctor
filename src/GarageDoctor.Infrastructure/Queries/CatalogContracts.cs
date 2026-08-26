@@ -44,7 +44,11 @@ public sealed record VehicleRanking(
     int TotalComplaints,
     int WithMileage);
 
-public sealed record ComponentGroupSummary(string Group, string Slug, int ComplaintCount);
+public sealed record ComponentGroupSummary(
+    string Group,
+    string Slug,
+    int ComplaintCount,
+    IReadOnlyList<string> TopLevels);
 
 public sealed record ConsumerAdvisory(
     string CampaignNumber,

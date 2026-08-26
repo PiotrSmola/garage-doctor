@@ -70,7 +70,8 @@ public sealed record ComponentVehicleRow(
     int ModelYear,
     int ComplaintCount,
     int LeaderCount,
-    int GroupTotal)
+    int GroupTotal,
+    int VehicleTotal)
 {
     public string DisplayName => string.Create(CultureInfo.InvariantCulture, $"{ModelYear} {Make} {Model}");
 
@@ -81,6 +82,10 @@ public sealed record ComponentVehicleRow(
     public string ShareLabel => GroupTotal <= 0
         ? "0.00"
         : (ComplaintCount * 100d / GroupTotal).ToString("0.00", CultureInfo.InvariantCulture);
+
+    public string VehicleShareLabel => VehicleTotal <= 0
+        ? "0"
+        : (ComplaintCount * 100d / VehicleTotal).ToString("0", CultureInfo.InvariantCulture);
 }
 
 public sealed record ComponentDetailViewModel
@@ -158,7 +163,7 @@ public sealed record ComponentDetailViewModel
         var makeLeader = detail.TopMakes.Count == 0 ? 0 : detail.TopMakes.Max(make => make.ComplaintCount);
         var vehicleLeader = detail.TopVehicles.Count == 0
             ? 0
-            : detail.TopVehicles.Max(vehicle => vehicle.TotalComplaints);
+            : detail.TopVehicles.Max(vehicle => vehicle.GroupComplaintCount);
 
         var counts = detail.MileageHistogram.ToDictionary(bucket => bucket.From, bucket => bucket.Count);
         var scale = counts.Count == 0 ? 0 : counts.Values.Max();
@@ -200,9 +205,10 @@ public sealed record ComponentDetailViewModel
                     vehicle.Model,
                     vehicle.ModelSlug,
                     vehicle.ModelYear,
-                    vehicle.TotalComplaints,
+                    vehicle.GroupComplaintCount,
                     vehicleLeader,
-                    detail.ComplaintCount))
+                    detail.ComplaintCount,
+                    vehicle.TotalComplaints))
                 .ToList(),
             Buckets = buckets,
             WithMileage = detail.WithMileage,
