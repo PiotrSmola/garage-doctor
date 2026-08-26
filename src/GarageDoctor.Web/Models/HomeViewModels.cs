@@ -20,6 +20,8 @@ public sealed record SearchCascade
 {
     public required IReadOnlyList<CascadeMake> Makes { get; init; }
 
+    public IReadOnlyList<CascadeMake> FrequentMakes { get; init; } = [];
+
     public IReadOnlyList<CascadeModel> Models { get; init; } = [];
 
     public IReadOnlyList<CascadeYear> Years { get; init; } = [];

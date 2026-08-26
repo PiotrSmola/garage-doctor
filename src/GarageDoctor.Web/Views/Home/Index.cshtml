@@ -29,10 +29,21 @@
             <label for="make">1 &middot; Make</label>
             <select id="make" name="make">
                 <option value="">Select a make</option>
-                @foreach (var make in Model.Cascade.Makes)
+                @if (Model.Cascade.FrequentMakes.Count > 0)
                 {
-                    <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                    <optgroup label="Most reported">
+                        @foreach (var make in Model.Cascade.FrequentMakes)
+                        {
+                            <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                        }
+                    </optgroup>
                 }
+                <optgroup label="Every make, alphabetical">
+                    @foreach (var make in Model.Cascade.Makes)
+                    {
+                        <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                    }
+                </optgroup>
             </select>
         </div>
 

@@ -8,6 +8,8 @@ public sealed class HomeController : Controller
 {
     private const int RankedMakeCount = 12;
 
+    private const long FrequentMakeThreshold = 10_000;
+
     private readonly IVehicleCatalogQueries _catalog;
 
     public HomeController(IVehicleCatalogQueries catalog)
@@ -63,6 +65,11 @@ public sealed class HomeController : Controller
             Cascade = new SearchCascade
             {
                 Makes = makes
+                    .OrderBy(entry => entry.Make, StringComparer.Ordinal)
+                    .Select(entry => new CascadeMake(entry.MakeSlug, entry.Make))
+                    .ToList(),
+                FrequentMakes = makes
+                    .Where(entry => entry.ComplaintCount >= FrequentMakeThreshold)
                     .OrderBy(entry => entry.Make, StringComparer.Ordinal)
                     .Select(entry => new CascadeMake(entry.MakeSlug, entry.Make))
                     .ToList(),
