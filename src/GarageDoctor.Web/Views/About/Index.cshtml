@@ -1,8 +1,9 @@
 @model CatalogOverview
 @{
     ViewData["Title"] = "About the data";
-    const long ComplaintsWithoutModelYear = 15032L;
-    var complaintsInCatalogue = Model.Complaints - ComplaintsWithoutModelYear;
+    var complaintsInCatalogue = Model.ComplaintsInCatalogue;
+    var complaintsWithoutModelYear = Model.Complaints - complaintsInCatalogue;
+    var makesOutsideCatalogue = Model.CanonicalMakes - Model.Makes;
 }
 
 @section Styles {
@@ -108,7 +109,7 @@
             <p>
                 A profile in this application is defined per make, model and model year, so a
                 complaint has to carry all three to be attached to one. Not all of them do:
-                @Formats.Number(ComplaintsWithoutModelYear) of the
+                @Formats.Number(complaintsWithoutModelYear) of the
                 @Formats.Number(Model.Complaints) vehicle complaints have no usable model year,
                 because the source file either leaves the year field empty or fills it with
                 <span class="mono">9999</span>.
@@ -116,7 +117,7 @@
             <p>
                 The browsable catalogue therefore covers @Formats.Number(complaintsInCatalogue)
                 complaints across @Formats.Number(Model.VehicleCombinations) make, model and year
-                combinations, and lists @Formats.Number(Model.Makes) makes against the 1023
+                combinations, and lists @Formats.Number(Model.Makes) makes against the @Formats.Number(Model.CanonicalMakes)
                 canonical makes that exist across all complaints. This is a design decision rather
                 than a discrepancy. A report with no model year cannot honestly be assigned to one,
                 and inventing a year to make the totals line up would be worse than the gap. Those
@@ -164,12 +165,12 @@
         <div class="prose">
             <p>
                 The raw file holds 1069 distinct make spellings. Normalization and a hand-written
-                alias map fold them to 1023 canonical makes, merging cases like
+                alias map fold them to @Formats.Number(Model.CanonicalMakes) canonical makes, merging cases like
                 <span class="mono">MERCEDES</span>, <span class="mono">MERCEDES BENZ</span>
                 and <span class="mono">MERCEDES-BENZ</span> into one.
             </p>
             <p>
-                Sixty-seven of those canonical makes never reach the browsable catalogue, for the
+                @Formats.Number(makesOutsideCatalogue) of those canonical makes never reach the browsable catalogue, for the
                 reason set out above: every complaint filed against them lacks a model year, so
                 there is no vehicle page for them to sit on.
             </p>

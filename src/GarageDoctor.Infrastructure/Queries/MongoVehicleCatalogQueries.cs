@@ -34,6 +34,7 @@ public sealed class MongoVehicleCatalogQueries : IVehicleCatalogQueries
             {
                 { "_id", BsonNull.Value },
                 { "withMileage", new BsonDocument("$sum", "$withMileage") },
+                { "inCatalogue", new BsonDocument("$sum", "$totalComplaints") },
                 { "makes", new BsonDocument("$addToSet", "$make") },
                 { "earliest", new BsonDocument("$min", "$modelYear") },
                 { "latest", new BsonDocument("$max", "$modelYear") }
@@ -41,11 +42,17 @@ public sealed class MongoVehicleCatalogQueries : IVehicleCatalogQueries
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var canonicalMakes = await _context.Complaints
+            .DistinctAsync(complaint => complaint.Make, FilterDefinition<Complaint>.Empty, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
         return new CatalogOverview(
             complaints,
             recalls,
             vehicles,
+            totals is null ? 0 : totals["inCatalogue"].ToInt64(),
             totals is null ? 0 : totals["makes"].AsBsonArray.Count,
+            (await canonicalMakes.ToListAsync(cancellationToken).ConfigureAwait(false)).Count,
             totals is null ? 0 : totals["withMileage"].ToInt64(),
             totals is null || totals["earliest"].IsBsonNull ? null : totals["earliest"].ToInt32(),
             totals is null || totals["latest"].IsBsonNull ? null : totals["latest"].ToInt32());

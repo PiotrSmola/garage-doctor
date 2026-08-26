@@ -93,6 +93,8 @@ public sealed class CatalogQueriesTests(MongoFixture fixture)
         Assert.Equal(4, overview.Complaints);
         Assert.Equal(4, overview.VehicleCombinations);
         Assert.Equal(2, overview.Makes);
+        Assert.Equal(2, overview.CanonicalMakes);
+        Assert.Equal(4, overview.ComplaintsInCatalogue);
         Assert.Equal(3, overview.ComplaintsWithMileage);
         Assert.Equal(2015, overview.EarliestModelYear);
     }

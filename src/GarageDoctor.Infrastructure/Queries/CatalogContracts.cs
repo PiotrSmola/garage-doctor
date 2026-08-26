@@ -6,7 +6,9 @@ public sealed record CatalogOverview(
     long Complaints,
     long Recalls,
     long VehicleCombinations,
+    long ComplaintsInCatalogue,
     int Makes,
+    int CanonicalMakes,
     long ComplaintsWithMileage,
     int? EarliestModelYear,
     int? LatestModelYear);
