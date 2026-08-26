@@ -1,0 +1,60 @@
+@model MakesIndexViewModel
+@{
+    ViewData["Title"] = "Makes";
+}
+
+<div class="page-head">
+    <p class="eyebrow">Catalog</p>
+    <h1>Every make on file</h1>
+    <p class="page-head__meta">
+        @Model.TotalMakes.ToString("N0") makes appear on at least one complaint. The @Model.Leaders.Count.ToString("N0")
+        in the table below account for @Model.LeaderShare% of every complaint in the database.
+    </p>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>@Model.LeaderThreshold.ToString("N0") complaints or more</h2>
+        <p class="panel__note">Ranked by complaint count</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Make</th>
+                <th scope="col" class="num">Complaints</th>
+                <th scope="col" class="num">Share</th>
+                <th scope="col" class="num">Models</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var make in Model.Leaders)
+            {
+                <tr>
+                    <td><a asp-action="Details" asp-route-makeSlug="@make.Slug">@make.Name</a></td>
+                    <td class="num">@make.ComplaintCount.ToString("N0")</td>
+                    <td class="num muted">@make.Share%</td>
+                    <td class="num">@make.ModelCount.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>The other @Model.Tail.Count.ToString("N0") makes</h2>
+        <p class="panel__note">Alphabetical</p>
+    </div>
+    <p class="muted">
+        NHTSA records a make for anything that has ever appeared on a complaint form, which is why this list runs
+        so long: trailer, bus, motor home and motorcycle builders make up most of it.
+        @Model.SingleFigureMakes.ToString("N0") makes have fewer than ten complaints on record, and they were kept
+        rather than merged away because they are real manufacturers, not misspellings.
+    </p>
+    <div class="link-columns">
+        @foreach (var make in Model.Tail)
+        {
+            <a asp-action="Details" asp-route-makeSlug="@make.Slug">@make.Name</a>
+        }
+    </div>
+</section>
