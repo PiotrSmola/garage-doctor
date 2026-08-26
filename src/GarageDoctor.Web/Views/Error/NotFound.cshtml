@@ -1,0 +1,45 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Nothing here";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/recalls.css" asp-append-version="true" />
+}
+
+<header class="page-head">
+    <p class="eyebrow">404</p>
+    <h1>Nothing in the dataset matches that address</h1>
+    @if (Model.ShowRequestedPath)
+    {
+        <p class="page-head__meta">
+            Requested: <span class="request-id">@Model.RequestedPath</span>
+        </p>
+    }
+</header>
+
+<div class="prose">
+    <p>
+        Garage Doctor only holds what the NHTSA complaint and recall files hold, so a missing
+        page is usually a gap in the data rather than a broken site. The likely reasons:
+    </p>
+</div>
+
+<ul class="reasons">
+    <li>The make, model and year combination has no complaints on file. Plenty of real cars do not, particularly outside the US market and outside the years the files cover.</li>
+    <li>The recall campaign number does not appear in the file. NHTSA campaign numbers take the form <span class="mono">19V123000</span>, a two-digit year, a letter for the recall type and a six-digit sequence.</li>
+    <li>A make or model slug was mistyped. The catalogue below is the reliable way in.</li>
+</ul>
+
+<div class="prose">
+    <p>
+        The canonical make list runs to over a thousand names, many of them trailer, bus and
+        motorcycle manufacturers, so browsing tends to work better than guessing at a URL.
+    </p>
+</div>
+
+<div class="actions">
+    <a class="button button--quiet" href="/">Search by make, model and year</a>
+    <a class="button button--quiet" href="/makes">Browse every make</a>
+    <a class="button button--quiet" href="/about">What this data covers</a>
+</div>

@@ -1,0 +1,228 @@
+@model CatalogOverview
+@{
+    ViewData["Title"] = "About the data";
+    const long ComplaintsWithoutModelYear = 15032L;
+    var complaintsInCatalogue = Model.Complaints - ComplaintsWithoutModelYear;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/recalls.css" asp-append-version="true" />
+}
+
+<header class="page-head">
+    <p class="eyebrow">About the data</p>
+    <h1>What this data does and does not say</h1>
+    <p class="page-head__meta">
+        Garage Doctor reads one public dataset closely. Reading it closely also means being
+        clear about where it stops being trustworthy.
+    </p>
+</header>
+
+<div class="stat-row campaign-figures">
+    <div class="stat">
+        <div class="stat__value">@Formats.Number(Model.Complaints)</div>
+        <div class="stat__label">Vehicle complaints</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.Number(Model.Recalls)</div>
+        <div class="stat__label">Recall rows</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.Number(Model.VehicleCombinations)</div>
+        <div class="stat__label">Make, model and year</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.Number(Model.Makes)</div>
+        <div class="stat__label">Makes in the catalogue</div>
+    </div>
+</div>
+
+<div class="doc">
+    <section>
+        <h2>Where it comes from</h2>
+        <div class="prose">
+            <p>
+                Everything here is built from the flat files published by the
+                <a href="https://static.nhtsa.gov/odi/ffdd/" rel="noreferrer">NHTSA Office of Defects Investigation</a>,
+                the defect investigation arm of the US National Highway Traffic Safety
+                Administration. The files are refreshed daily and released as <span class="mono">us-pd</span>,
+                public domain, with no usage conditions attached.
+            </p>
+            <p>
+                The figures above are counted from the live database rather than quoted from a
+                readme, so they move when the data is reloaded. The complaints run from 1995
+                onward and the recall files reach back to 1967. Model years present in the
+                catalogue span
+                @if (Model.EarliestModelYear.HasValue && Model.LatestModelYear.HasValue)
+                {
+                    <text>@Model.EarliestModelYear to @Model.LatestModelYear.</text>
+                }
+                else
+                {
+                    <text>the full range of the source files.</text>
+                }
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Complaints are not failure rates</h2>
+        <div class="prose">
+            <p>
+                This is the single most important thing on the page. A complaint is filed
+                voluntarily by a vehicle owner who chose to contact a federal agency about a
+                fault. Nobody is sampled and nobody is surveyed.
+            </p>
+            <p>
+                A model sold in large numbers therefore collects more complaints than a rare one
+                regardless of how well it was built, and a fault that frightens people gets
+                reported far more often than one that merely annoys them. Nothing in this
+                application is normalized by fleet size, because NHTSA does not publish how many
+                of each model are on the road. Read the component breakdowns as a picture of what
+                owners of a given car complain about, not as a ranking of which car is worse.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Mileage is present in about half the records</h2>
+        <div class="prose">
+            <p>
+                The mileage field is optional and frequently left blank:
+                @Formats.Number(Model.ComplaintsWithMileage) of @Formats.Number(Model.Complaints)
+                complaints carry one, which is @Formats.Share(Model.ComplaintsWithMileage, Model.Complaints)
+                of the file.
+            </p>
+            <p>
+                That is why every mileage histogram in the application prints its own sample size
+                next to it instead of quietly plotting a subset as though it were the whole. A
+                histogram drawn from fifty records looks exactly like one drawn from five
+                thousand unless it tells you which it is.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Not every complaint belongs to a vehicle profile</h2>
+        <div class="prose">
+            <p>
+                A profile in this application is defined per make, model and model year, so a
+                complaint has to carry all three to be attached to one. Not all of them do:
+                @Formats.Number(ComplaintsWithoutModelYear) of the
+                @Formats.Number(Model.Complaints) vehicle complaints have no usable model year,
+                because the source file either leaves the year field empty or fills it with
+                <span class="mono">9999</span>.
+            </p>
+            <p>
+                The browsable catalogue therefore covers @Formats.Number(complaintsInCatalogue)
+                complaints across @Formats.Number(Model.VehicleCombinations) make, model and year
+                combinations, and lists @Formats.Number(Model.Makes) makes against the 1023
+                canonical makes that exist across all complaints. This is a design decision rather
+                than a discrepancy. A report with no model year cannot honestly be assigned to one,
+                and inventing a year to make the totals line up would be worse than the gap. Those
+                records stay in the database and stay in the headline count above, they simply have
+                no vehicle page to sit on.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>A recall row is not a recall campaign</h2>
+        <div class="prose">
+            <p>
+                One row in the recall file is a campaign, model and model-year combination, not a
+                campaign. A single campaign covering twelve models across nine model years
+                produces around a hundred rows.
+            </p>
+            <p>
+                This is why Mercedes-Benz leads the recall file with 45 411 rows while sitting far
+                down the complaint counts. It reflects an unusually fragmented model range, badged
+                across many variants and years, not a quality signal. Any chart that ranks makes
+                by raw recall rows is measuring model-range structure and calling it reliability.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>US market only</h2>
+        <div class="prose">
+            <p>
+                NHTSA regulates vehicles sold in the United States, so that is the entire
+                population here. European engine variants largely do not appear, and makes that
+                never sold in the US in volume are statistically absent, Renault, Peugeot and Opel
+                among them.
+            </p>
+            <p>
+                A European car with the same badge as an American one is often a different vehicle
+                underneath. Treat the profiles as evidence about the US-market car.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Names had to be cleaned up, and the cleanup stops short</h2>
+        <div class="prose">
+            <p>
+                The raw file holds 1069 distinct make spellings. Normalization and a hand-written
+                alias map fold them to 1023 canonical makes, merging cases like
+                <span class="mono">MERCEDES</span>, <span class="mono">MERCEDES BENZ</span>
+                and <span class="mono">MERCEDES-BENZ</span> into one.
+            </p>
+            <p>
+                Sixty-seven of those canonical makes never reach the browsable catalogue, for the
+                reason set out above: every complaint filed against them lacks a model year, so
+                there is no vehicle page for them to sit on.
+            </p>
+            <p>
+                Canonicalization stops well short of tidy. Roughly 740 makes have fewer than ten
+                complaints each and together account for a tenth of a percent of the data, but they
+                are genuinely distinct trailer, bus, camper and motorcycle manufacturers rather
+                than typos. Merging them by string similarity would corrupt the taxonomy to make a
+                number look better, so they stay. Components got the same treatment from the other
+                direction: a taxonomy that drifted over thirty years is folded into 26 canonical
+                groups, with anything unmapped falling into a reported catch-all instead of
+                quietly disappearing.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>What was deliberately thrown away</h2>
+        <div class="prose">
+            <p>
+                Complaint narratives are free text written by members of the public, and people
+                routinely type their own name, address or phone number into them. Eight source
+                columns therefore never reach the database: the five dealer fields, the vehicle
+                operator, the VIN and the reporter's city. The document type has no properties to
+                hold them, and a test walks each stored document recursively and fails the build if
+                any of those names appear at any depth.
+            </p>
+            <p>
+                The repository holds no raw data either, only the download script, the field
+                specifications and a manifest recording which snapshot was used. The dataset is
+                public domain and republishing it would be permitted, but republishing other
+                people's contact details is a different matter.
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Use it accordingly</h2>
+        <div class="prose">
+            <p>
+                What this dataset is good for: seeing which parts of a specific car owners report
+                trouble with, roughly when in the vehicle's life it happens, and which recall
+                campaigns apply to it. What it cannot tell you is whether one car is more reliable
+                than another. That question needs fleet numbers nobody publishes.
+            </p>
+        </div>
+    </section>
+</div>
+
+<p class="caveat">
+    Source files and field specifications:
+    <a href="https://static.nhtsa.gov/odi/ffdd/" rel="noreferrer">static.nhtsa.gov/odi/ffdd</a>.
+    Recall lookup by vehicle identification number:
+    <a href="https://www.nhtsa.gov/recalls" rel="noreferrer">nhtsa.gov/recalls</a>.
+    Nothing on this site is safety advice.
+</p>

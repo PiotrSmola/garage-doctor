@@ -1,0 +1,216 @@
+@model RecallDetailViewModel
+@{
+    var campaign = Model.Campaign;
+    ViewData["Title"] = $"Recall {campaign.CampaignNumber}";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/recalls.css" asp-append-version="true" />
+}
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="/">Search</a>
+    <span>Recall @campaign.CampaignNumber</span>
+</nav>
+
+@if (campaign.DoNotDrive)
+{
+    <section class="notice notice--severe advisory" aria-labelledby="advisory-do-not-drive">
+        <h2 id="advisory-do-not-drive" class="eyebrow advisory__label">Do not drive advisory</h2>
+        <p class="advisory__lede">These vehicles should not be driven until the recall repair has been carried out.</p>
+        <p>
+            This is the strongest warning NHTSA attaches to a recall, and it is issued for a
+            small fraction of campaigns. It does not mean book a service visit when convenient.
+            It means the defect is considered dangerous enough that driving the vehicle risks a
+            crash before the repair is done. Contact a franchised dealer, quote the campaign
+            number above, and ask about transport or a loan vehicle. Recall work is carried out
+            free of charge.
+        </p>
+    </section>
+}
+
+@if (campaign.ParkOutside)
+{
+    <section class="notice notice--severe advisory" aria-labelledby="advisory-park-outside">
+        <h2 id="advisory-park-outside" class="eyebrow advisory__label">Park outside advisory</h2>
+        <p class="advisory__lede">These vehicles should be parked outdoors and away from buildings until the recall repair has been carried out.</p>
+        <p>
+            The defect can start a fire while the vehicle is switched off and unattended, so the
+            danger is not only to the car. Keep it away from houses, garages, carports and other
+            vehicles until it has been repaired. This warning applies whether or not the vehicle
+            is being driven.
+        </p>
+    </section>
+}
+
+<header class="page-head">
+    <p class="eyebrow">NHTSA recall campaign</p>
+    <h1>@campaign.CampaignNumber</h1>
+    <p class="page-head__meta">
+        @campaign.Manufacturer<br />
+        @campaign.ComponentName
+        @if (!string.IsNullOrWhiteSpace(campaign.ComponentGroup))
+        {
+            <span class="muted">(@campaign.ComponentGroup)</span>
+        }
+    </p>
+</header>
+
+<div class="stat-row campaign-figures">
+    <div class="stat">
+        <div class="stat__value">@Formats.NumberOrDash(campaign.PotentiallyAffected)</div>
+        <div class="stat__label">Units potentially affected</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.Number(Model.CombinationCount)</div>
+        <div class="stat__label">Model-year combinations listed</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.DateOrDash(campaign.ReportReceivedDate)</div>
+        <div class="stat__label">Report received</div>
+    </div>
+    <div class="stat">
+        <div class="stat__value">@Formats.DateOrDash(campaign.OwnersNotifiedDate)</div>
+        <div class="stat__label">Owners notified</div>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>The defect</h2>
+        <span class="panel__note">manufacturer's wording</span>
+    </div>
+    @if (string.IsNullOrWhiteSpace(campaign.DefectDescription))
+    {
+        <div class="empty">The source file carries no defect description for this campaign.</div>
+    }
+    else
+    {
+        <div class="prose prose--source">
+            <p>@campaign.DefectDescription</p>
+        </div>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>What can happen</h2>
+        <span class="panel__note">consequence of the defect</span>
+    </div>
+    @if (string.IsNullOrWhiteSpace(campaign.Consequence))
+    {
+        <div class="empty">The source file carries no consequence statement for this campaign.</div>
+    }
+    else
+    {
+        <div class="prose prose--source">
+            <p>@campaign.Consequence</p>
+        </div>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>The remedy</h2>
+        <span class="panel__note">corrective action</span>
+    </div>
+    @if (string.IsNullOrWhiteSpace(campaign.CorrectiveAction))
+    {
+        <div class="empty">The source file carries no corrective action for this campaign.</div>
+    }
+    else
+    {
+        <div class="prose prose--source">
+            <p>@campaign.CorrectiveAction</p>
+        </div>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Vehicles covered</h2>
+        <span class="panel__note">
+            @Formats.Number(Model.CombinationCount) combinations listed across
+            @Formats.Number(Model.Coverage.Count) @(Model.Coverage.Count == 1 ? "make" : "makes")
+        </span>
+    </div>
+
+    @if (Model.SourceRowLimitReached)
+    {
+        <div class="notice notice--caution">
+            <div class="notice__title">This list is incomplete</div>
+            <p>
+                The read behind this page stops at @Formats.Number(Model.SourceRowLimit) source
+                rows, and this campaign reached that limit. It covers more vehicles than are shown
+                below. Check the campaign number against your own vehicle identification number
+                rather than assuming a car is unaffected because it is missing here.
+            </p>
+        </div>
+    }
+
+    @if (!Model.HasCoverage)
+    {
+        <div class="empty">No vehicle rows are attached to this campaign.</div>
+    }
+    else
+    {
+        foreach (var group in Model.Coverage)
+        {
+            <h3 class="coverage__make">@group.Make</h3>
+            <table class="coverage">
+                <thead>
+                    <tr>
+                        <th scope="col">Model</th>
+                        <th scope="col">Model years</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in group.Models)
+                    {
+                        <tr>
+                            <td>@row.Model</td>
+                            <td>
+                                <div class="years">
+                                    @foreach (var year in row.Years)
+                                    {
+                                        if (year.CanLink)
+                                        {
+                                            <a href="@year.Path">@year.ModelYear</a>
+                                        }
+                                        else
+                                        {
+                                            <span>year not stated</span>
+                                        }
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <p class="caveat">
+            One row in the NHTSA recall file is a campaign, model and model-year combination, so
+            a single campaign can cover hundreds of them. The years above link through to the
+            failure profile for that exact vehicle.
+            @if (Model.CoverageCapped)
+            {
+                <text>
+                    Showing @Formats.Number(Model.ShownModelRowCount) of
+                    @Formats.Number(Model.ModelRowCount) model rows.
+                </text>
+            }
+            Coverage is built from at most @Formats.Number(Model.SourceRowLimit) source rows per
+            campaign, so for the few very large campaigns this list is a subset rather than the
+            complete roster.
+        </p>
+    }
+</section>
+
+<p class="caveat">
+    Recall data is published by the NHTSA Office of Defects Investigation and reproduced here
+    unchanged. It is not legal or safety advice. Check the campaign against your own vehicle
+    identification number with the manufacturer or at
+    <a href="https://www.nhtsa.gov/recalls" rel="noreferrer">nhtsa.gov/recalls</a> before acting on it.
+</p>
