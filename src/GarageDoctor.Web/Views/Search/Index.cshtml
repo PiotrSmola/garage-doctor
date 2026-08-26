@@ -1,0 +1,305 @@
+@model SearchPageViewModel
+@{
+    ViewData["Title"] = Model.Searched ? "Search results" : "Search";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/search-results.css" asp-append-version="true" />
+}
+
+<div class="page-head">
+    <p class="breadcrumb"><a asp-controller="Home" asp-action="Index">Home</a><span>Search</span></p>
+    <p class="eyebrow">Complaint narratives</p>
+    <h1>Search what owners wrote</h1>
+    <p class="page-head__meta">
+        Every complaint carries a narrative written by the owner. This page searches those narratives, filters
+        them by vehicle and component, and links each hit back to the vehicle it was filed against.
+    </p>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Search terms and filters</h2>
+        <p class="panel__note">A plain form, no scripts. Every search is a linkable address.</p>
+    </div>
+
+    @if (Model.UnresolvedMake is not null)
+    {
+        <div class="notice">
+            <div class="notice__title">No make matches that name</div>
+            Nothing in the catalog is filed under <strong>@Model.UnresolvedMake</strong>, so that filter was
+            ignored. Choose a make from the list instead.
+        </div>
+    }
+
+    @if (Model.UnresolvedComponentGroup is not null)
+    {
+        <div class="notice">
+            <div class="notice__title">No component group matches that name</div>
+            The taxonomy has no group called <strong>@Model.UnresolvedComponentGroup</strong>, so that filter was
+            ignored. Choose a group from the list instead.
+        </div>
+    }
+
+    <form class="cascade search-form" method="get" asp-controller="Search" asp-action="Index">
+        <div class="field search-form__term">
+            <label for="term">Term</label>
+            <input type="search" id="term" name="term" value="@Model.Form.Term"
+                   placeholder="shudder, hesitates on acceleration, cracked windshield" autocomplete="off" />
+        </div>
+
+        <div class="field">
+            <label for="makeSlug">Make</label>
+            <select id="makeSlug" name="makeSlug">
+                <option value="">Any make</option>
+                @if (Model.FrequentMakes.Count > 0)
+                {
+                    <optgroup label="Most reported">
+                        @foreach (var make in Model.FrequentMakes)
+                        {
+                            <option value="@make.Value" selected="@(make.Value == Model.Form.MakeSlug)">@make.Label</option>
+                        }
+                    </optgroup>
+                }
+                <optgroup label="Every make, alphabetical">
+                    @foreach (var make in Model.Makes)
+                    {
+                        <option value="@make.Value" selected="@(make.Value == Model.Form.MakeSlug)">@make.Label</option>
+                    }
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="componentGroup">Component group</label>
+            <select id="componentGroup" name="componentGroup">
+                <option value="">Any component</option>
+                @foreach (var group in Model.ComponentGroups)
+                {
+                    <option value="@group.Value" selected="@(group.Value == Model.Form.ComponentGroup)">@group.Label</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="yearFrom">Model year from</label>
+            <input type="text" inputmode="numeric" maxlength="4" id="yearFrom" name="yearFrom"
+                   value="@Model.Form.YearFromParam" placeholder="1998" autocomplete="off" />
+        </div>
+
+        <div class="field">
+            <label for="yearTo">Model year to</label>
+            <input type="text" inputmode="numeric" maxlength="4" id="yearTo" name="yearTo"
+                   value="@Model.Form.YearToParam" placeholder="2015" autocomplete="off" />
+        </div>
+
+        <div class="search-form__actions">
+            <button type="submit">Search</button>
+            @if (Model.Searched)
+            {
+                <a class="button button--quiet" asp-controller="Search" asp-action="Index">Start again</a>
+            }
+        </div>
+
+        <label class="search-form__toggle">
+            <input type="checkbox" name="mileageOnly" value="true" checked="@Model.Form.MileageOnly" />
+            Only reports that carry a mileage reading
+        </label>
+    </form>
+</section>
+
+@if (!Model.Searched)
+{
+    <section class="panel">
+        <div class="panel__head">
+            <h2>What this page does</h2>
+            <p class="panel__note">Nothing searched yet</p>
+        </div>
+        <p>
+            Enter a term and it is matched against 2.16 million complaint narratives as whole words, stemmed,
+            so <strong>brakes</strong> also finds <strong>brake</strong>. Add a make, a component group, a model
+            year range or the mileage filter and the search narrows to that subset, where the term is matched as
+            a literal substring instead.
+        </p>
+        <p class="muted">
+            Results are matches. They are not ranked by relevance, and the reason is in the caveat under any
+            result list.
+        </p>
+        <ul class="examples">
+            @foreach (var example in Model.Examples)
+            {
+                <li>
+                    <a asp-controller="Search" asp-action="Index"
+                       asp-route-term="@example.Term"
+                       asp-route-makeSlug="@example.MakeSlug"
+                       asp-route-componentGroup="@example.ComponentGroup">@example.Label</a>
+                </li>
+            }
+        </ul>
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="panel__head">
+            <h2>@Model.ResultsHeadline</h2>
+            <p class="panel__note">@Model.TimingLabel</p>
+        </div>
+
+        <div class="notice">
+            <div class="notice__title">@Model.ModeHeadline</div>
+            @Model.ModeExplanation
+        </div>
+
+        @if (Model.FilterSentence is not null)
+        {
+            <p class="muted results__filters">
+                @Model.FilterSentence
+                @if (Model.Form.HasTerm)
+                {
+                    <a asp-controller="Search" asp-action="Index" asp-route-term="@Model.Form.TermParam">Search the term without filters</a>
+                }
+            </p>
+        }
+
+        @if (Model.PastTheEnd)
+        {
+            <div class="empty">
+                <p>Page @Model.Page is past the last result for this search.</p>
+                <p class="results__actions">
+                    <a asp-controller="Search" asp-action="Index"
+                       asp-route-term="@Model.Form.TermParam"
+                       asp-route-makeSlug="@Model.Form.MakeSlugParam"
+                       asp-route-componentGroup="@Model.Form.ComponentGroupParam"
+                       asp-route-yearFrom="@Model.Form.YearFromParam"
+                       asp-route-yearTo="@Model.Form.YearToParam"
+                       asp-route-mileageOnly="@Model.Form.MileageOnlyParam">Back to the first page</a>
+                </p>
+            </div>
+        }
+        else if (!Model.HasHits)
+        {
+            <div class="empty">
+                <p>Nothing in the database matches this search.</p>
+                @if (Model.Form.HasFilters && Model.Form.HasTerm)
+                {
+                    <p class="results__actions">
+                        The filters are the likeliest cause. Try
+                        <a asp-controller="Search" asp-action="Index" asp-route-term="@Model.Form.TermParam">the same term with no filters</a>,
+                        or widen the model year range.
+                    </p>
+                }
+                else if (Model.Form.HasFilters)
+                {
+                    <p class="results__actions">
+                        Drop a filter, widen the model year range, or
+                        <a asp-controller="Search" asp-action="Index">start again</a>.
+                    </p>
+                }
+                else
+                {
+                    <p class="results__actions">
+                        Whole words only, so a fragment of a word finds nothing. Try a shorter word, a common
+                        spelling, or add a make filter, which switches to substring matching.
+                    </p>
+                }
+            </div>
+        }
+        else
+        {
+            <ol class="results">
+                @foreach (var hit in Model.Hits)
+                {
+                    <li class="result">
+                        <p class="result__vehicle">
+                            @if (hit.HasVehicleLink)
+                            {
+                                <a asp-controller="Vehicles" asp-action="Profile"
+                                   asp-route-makeSlug="@hit.MakeSlug"
+                                   asp-route-modelSlug="@hit.ModelSlug"
+                                   asp-route-modelYear="@hit.ModelYear">@hit.VehicleLabel</a>
+                            }
+                            else
+                            {
+                                @hit.VehicleLabel
+                            }
+                        </p>
+                        <p class="narrative__meta">
+                            @hit.ReceivedLabel <span class="result__sep">&#183;</span>
+                            @hit.MileageLabel <span class="result__sep">&#183;</span>
+                            @hit.ComponentGroup
+                        </p>
+                        <p class="narrative result__narrative">
+                            @if (hit.Snippet.IsEmpty)
+                            {
+                                <span class="muted">No narrative text is stored for this report.</span>
+                            }
+                            else
+                            {
+                                if (hit.Snippet.ClippedStart)
+                                {<span class="result__clip">&#8230; </span>}
+                                foreach (var segment in hit.Snippet.Segments)
+                                {
+                                    if (segment.IsMatch)
+                                    {<mark>@segment.Text</mark>}
+                                    else
+                                    {@segment.Text}
+                                }
+                                if (hit.Snippet.ClippedEnd)
+                                {<span class="result__clip"> &#8230;</span>}
+                            }
+                        </p>
+                        @if (hit.Outcomes.Count > 0)
+                        {
+                            <p class="result__outcomes">@string.Join(", ", hit.Outcomes)</p>
+                        }
+                    </li>
+                }
+            </ol>
+
+            <nav class="pager" aria-label="Result pages">
+                @if (Model.HasPreviousPage)
+                {
+                    <a class="button button--quiet" asp-controller="Search" asp-action="Index"
+                       asp-route-term="@Model.Form.TermParam"
+                       asp-route-makeSlug="@Model.Form.MakeSlugParam"
+                       asp-route-componentGroup="@Model.Form.ComponentGroupParam"
+                       asp-route-yearFrom="@Model.Form.YearFromParam"
+                       asp-route-yearTo="@Model.Form.YearToParam"
+                       asp-route-mileageOnly="@Model.Form.MileageOnlyParam"
+                       asp-route-page="@(Model.Page - 1)">Previous</a>
+                }
+                else
+                {
+                    <span class="button button--quiet pager__off" aria-disabled="true">Previous</span>
+                }
+
+                <span class="pager__position">@Model.PageLabel</span>
+
+                @if (Model.HasNextPage)
+                {
+                    <a class="button button--quiet" asp-controller="Search" asp-action="Index"
+                       asp-route-term="@Model.Form.TermParam"
+                       asp-route-makeSlug="@Model.Form.MakeSlugParam"
+                       asp-route-componentGroup="@Model.Form.ComponentGroupParam"
+                       asp-route-yearFrom="@Model.Form.YearFromParam"
+                       asp-route-yearTo="@Model.Form.YearToParam"
+                       asp-route-mileageOnly="@Model.Form.MileageOnlyParam"
+                       asp-route-page="@(Model.Page + 1)">Next</a>
+                }
+                else
+                {
+                    <span class="button button--quiet pager__off" aria-disabled="true">Next</span>
+                }
+            </nav>
+        }
+
+        @if (Model.CountCaveat is not null || Model.PerformanceNote is not null)
+        {
+            <p class="caveat">
+                @Model.CountCaveat
+                @Model.PerformanceNote
+            </p>
+        }
+    </section>
+}
