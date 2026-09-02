@@ -14,7 +14,7 @@
     --bar-track: #eeece7;
     --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
-    --shell: 68rem;
+    --shell: 1400px;
 }
 
 *,
@@ -72,7 +72,7 @@ a:hover {
 .shell {
     max-width: var(--shell);
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0;
 }
 
 .masthead {

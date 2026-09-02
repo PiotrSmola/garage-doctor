@@ -351,6 +351,25 @@ public sealed class MongoContextTests(MongoFixture fixture)
         Id = id,
         Group = "POWER TRAIN",
         TopLevels = ["POWER TRAIN", "POWER TRAIN:AUTOMATIC TRANSMISSION"],
-        ComplaintCount = 91_204
+        ComplaintCount = 91_204,
+        WithMileage = 44_120,
+        MileageHistogram =
+        [
+            new MileageBucket { From = 0, To = 25_000, Count = 12_003 },
+            new MileageBucket { From = 250_000, To = null, Count = 88 }
+        ],
+        TopMakes = [new ComponentMakeStat { Make = "FORD", Count = 17_442 }],
+        TopVehicles =
+        [
+            new ComponentVehicleStat
+            {
+                VehicleKey = "ford|focus|2012",
+                Make = "FORD",
+                Model = "FOCUS",
+                ModelYear = 2012,
+                Count = 3_512,
+                TotalComplaints = 5_020
+            }
+        ]
     };
 }

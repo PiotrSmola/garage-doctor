@@ -3,6 +3,7 @@ using GarageDoctor.Domain.Models;
 using GarageDoctor.Infrastructure;
 using GarageDoctor.Infrastructure.Queries;
 using Microsoft.Extensions.Logging.Abstractions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace GarageDoctor.IntegrationTests;
@@ -78,6 +79,33 @@ public sealed class SearchQueriesTests(MongoFixture fixture)
 
         Assert.All(result.Hits, hit => Assert.Equal(2016, hit.ModelYear));
         Assert.NotEmpty(result.Hits);
+    }
+
+    [Fact]
+    public async Task AModelYearFilterWalksAnIndexRatherThanTheWholeCollection()
+    {
+        var context = await SeededContextAsync();
+
+        var explain = await context.Database.RunCommandAsync<BsonDocument>(
+            new BsonDocument
+            {
+                {
+                    "explain", new BsonDocument
+                    {
+                        { "find", CollectionNames.Complaints },
+                        { "filter", new BsonDocument("modelYear", new BsonDocument { { "$gte", 2015 }, { "$lte", 2016 } }) },
+                        { "limit", 20 }
+                    }
+                },
+                { "verbosity", "executionStats" }
+            },
+            cancellationToken: CancellationToken.None);
+
+        var stages = ExplainPlans.Stages(explain);
+
+        Assert.Contains("complaints_modelYear_milesAtFailure", ExplainPlans.IndexNames(explain));
+        Assert.DoesNotContain(stages, stage => stage.EndsWith("COLLSCAN", StringComparison.Ordinal));
+        Assert.Equal(4, explain["executionStats"]["nReturned"].ToInt32());
     }
 
     [Fact]
@@ -167,10 +195,10 @@ public sealed class SearchQueriesTests(MongoFixture fixture)
             cancellationToken: CancellationToken.None);
 
         await new IndexBuilder(context, NullLogger<IndexBuilder>.Instance).CreateAllAsync(CancellationToken.None);
-        await new VehicleCatalogBuilder(context, NullLogger<VehicleCatalogBuilder>.Instance)
-            .RebuildComponentsAsync(CancellationToken.None);
         await new ProfileBuilder(context, NullLogger<ProfileBuilder>.Instance)
             .RebuildAllAsync(CancellationToken.None);
+        await new VehicleCatalogBuilder(context, NullLogger<VehicleCatalogBuilder>.Instance)
+            .RebuildComponentsAsync(CancellationToken.None);
 
         return context;
     }

@@ -38,16 +38,22 @@ public sealed class MongoSearchQueries : ISearchQueries
 
         var filter = BuildFilter(request, term, mode);
 
-        var complaints = await _context.Complaints
+        // The page and the count are independent, so they run side by side. The count matters
+        // most for a term combined with filters: the text index cannot be intersected with any
+        // other index, so counting has to fetch every narrative the term matches until the cap.
+        var pageTask = _context.Complaints
             .Find(filter)
             .Skip((page - 1) * pageSize)
             .Limit(pageSize)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+            .ToListAsync(cancellationToken);
 
-        var matchCount = await _context.Complaints
-            .CountDocumentsAsync(filter, new CountOptions { Limit = CountCap }, cancellationToken)
-            .ConfigureAwait(false);
+        var countTask = _context.Complaints
+            .CountDocumentsAsync(filter, new CountOptions { Limit = CountCap }, cancellationToken);
+
+        await Task.WhenAll(pageTask, countTask).ConfigureAwait(false);
+
+        var complaints = await pageTask.ConfigureAwait(false);
+        var matchCount = await countTask.ConfigureAwait(false);
 
         return new ComplaintSearchResult(
             complaints.Select(ToHit).ToList(),

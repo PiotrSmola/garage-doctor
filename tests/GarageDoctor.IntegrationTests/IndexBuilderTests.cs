@@ -18,8 +18,8 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
         var indexes = await ReadIndexesAsync(context.Complaints);
 
         Assert.Equal(
-            new BsonDocument("vehicleKey", 1),
-            indexes["complaints_vehicleKey"]["key"].AsBsonDocument);
+            new BsonDocument { { "vehicleKey", 1 }, { "receivedDate", -1 } },
+            indexes["complaints_vehicleKey_receivedDate"]["key"].AsBsonDocument);
 
         Assert.Equal(
             new BsonDocument { { "make", 1 }, { "model", 1 }, { "modelYear", 1 } },
@@ -30,12 +30,40 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
             indexes["complaints_componentGroup_make"]["key"].AsBsonDocument);
 
         Assert.Equal(
-            new BsonDocument("receivedDate", -1),
-            indexes["complaints_receivedDate_desc"]["key"].AsBsonDocument);
+            new BsonDocument { { "modelYear", 1 }, { "milesAtFailure", 1 } },
+            indexes["complaints_modelYear_milesAtFailure"]["key"].AsBsonDocument);
+
+        Assert.Equal(
+            new BsonDocument("milesAtFailure", 1),
+            indexes["complaints_milesAtFailure"]["key"].AsBsonDocument);
 
         Assert.Equal(
             new BsonDocument("description", 1),
             indexes["complaints_description_text"]["weights"].AsBsonDocument);
+    }
+
+    [Fact]
+    public async Task CreateAllDropsTheComplaintIndexesItReplaced()
+    {
+        var context = CreateContext();
+        await context.Complaints.Indexes.CreateManyAsync(
+            [
+                new CreateIndexModel<Complaint>(
+                    Builders<Complaint>.IndexKeys.Ascending(complaint => complaint.VehicleKey),
+                    new CreateIndexOptions { Name = "complaints_vehicleKey" }),
+                new CreateIndexModel<Complaint>(
+                    Builders<Complaint>.IndexKeys.Descending(complaint => complaint.ReceivedDate),
+                    new CreateIndexOptions { Name = "complaints_receivedDate_desc" })
+            ],
+            CancellationToken.None);
+
+        await CreateBuilder(context).CreateAllAsync(CancellationToken.None);
+
+        var indexes = await ReadIndexesAsync(context.Complaints);
+
+        Assert.DoesNotContain("complaints_vehicleKey", indexes.Keys);
+        Assert.DoesNotContain("complaints_receivedDate_desc", indexes.Keys);
+        Assert.Contains("complaints_vehicleKey_receivedDate", indexes.Keys);
     }
 
     [Fact]
@@ -53,6 +81,10 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
         Assert.True(profiles["profiles_vehicleKey_unique"]["unique"].AsBoolean);
 
         Assert.Equal(
+            new BsonDocument("totalComplaints", -1),
+            profiles["profiles_totalComplaints_desc"]["key"].AsBsonDocument);
+
+        Assert.Equal(
             new BsonDocument { { "make", 1 }, { "model", 1 }, { "modelYear", 1 } },
             vehicles["vehicles_make_model_modelYear_unique"]["key"].AsBsonDocument);
         Assert.True(vehicles["vehicles_make_model_modelYear_unique"]["unique"].AsBoolean);
@@ -68,6 +100,25 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
 
         Assert.Equal(new BsonDocument("campaignNumber", 1), recalls["recalls_campaignNumber"]["key"].AsBsonDocument);
         Assert.Equal(new BsonDocument("vehicleKey", 1), recalls["recalls_vehicleKey"]["key"].AsBsonDocument);
+    }
+
+    [Fact]
+    public async Task AdvisoryIndexesCoverOnlyTheFlaggedRecallRows()
+    {
+        var context = CreateContext();
+        await CreateBuilder(context).CreateAllAsync(CancellationToken.None);
+
+        var recalls = await ReadIndexesAsync(context.Recalls);
+
+        Assert.Equal(new BsonDocument("doNotDrive", 1), recalls["recalls_doNotDrive_flagged"]["key"].AsBsonDocument);
+        Assert.Equal(
+            new BsonDocument("doNotDrive", true),
+            recalls["recalls_doNotDrive_flagged"]["partialFilterExpression"].AsBsonDocument);
+
+        Assert.Equal(new BsonDocument("parkOutside", 1), recalls["recalls_parkOutside_flagged"]["key"].AsBsonDocument);
+        Assert.Equal(
+            new BsonDocument("parkOutside", true),
+            recalls["recalls_parkOutside_flagged"]["partialFilterExpression"].AsBsonDocument);
     }
 
     [Fact]
@@ -99,7 +150,7 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
 
         var indexes = await ReadIndexesAsync(context.Complaints);
 
-        Assert.Equal(6, indexes.Count);
+        Assert.Equal(7, indexes.Count);
     }
 
     [Fact]
@@ -160,12 +211,49 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
             },
             cancellationToken: CancellationToken.None);
 
-        var stages = ValuesNamed(explain, "stage").ToArray();
+        var stages = ExplainPlans.Stages(explain);
 
         Assert.Contains(stages, stage => stage.EndsWith("IXSCAN", StringComparison.Ordinal));
         Assert.DoesNotContain(stages, stage => stage.EndsWith("COLLSCAN", StringComparison.Ordinal));
         Assert.Equal(1, explain["executionStats"]["nReturned"].ToInt32());
         Assert.InRange(explain["executionStats"]["executionTimeMillis"].ToInt32(), 0, 19);
+    }
+
+    [Fact]
+    public async Task RecentComplaintsOfAVehicleComeOffTheCompoundIndexWithoutAnInMemorySort()
+    {
+        var context = CreateContext();
+        await CreateBuilder(context).CreateAllAsync(CancellationToken.None);
+        await context.Complaints.InsertManyAsync(
+            [
+                SampleComplaint(1, "The brake pedal sank to the floor without any warning."),
+                SampleComplaint(2, "The transmission slipped out of gear while merging onto the highway."),
+                SampleComplaint(3, "Coolant loss with no visible leak.")
+            ],
+            cancellationToken: CancellationToken.None);
+
+        var explain = await context.Database.RunCommandAsync<BsonDocument>(
+            new BsonDocument
+            {
+                {
+                    "explain", new BsonDocument
+                    {
+                        { "find", CollectionNames.Complaints },
+                        { "filter", new BsonDocument("vehicleKey", "audi|a3|2015") },
+                        { "sort", new BsonDocument("receivedDate", -1) },
+                        { "limit", 6 }
+                    }
+                },
+                { "verbosity", "executionStats" }
+            },
+            cancellationToken: CancellationToken.None);
+
+        var stages = ExplainPlans.Stages(explain);
+
+        Assert.Contains("complaints_vehicleKey_receivedDate", ExplainPlans.IndexNames(explain));
+        Assert.DoesNotContain(stages, stage => stage.EndsWith("COLLSCAN", StringComparison.Ordinal));
+        Assert.DoesNotContain("SORT", stages);
+        Assert.Equal(3, explain["executionStats"]["nReturned"].ToInt32());
     }
 
     private MongoContext CreateContext() => new(fixture.CreateClient(), $"indexes_{Guid.NewGuid():N}");
@@ -193,39 +281,6 @@ public sealed class IndexBuilderTests(MongoFixture fixture)
             .Concat(profiles.Keys)
             .Order(StringComparer.Ordinal)
             .ToArray();
-    }
-
-    private static IEnumerable<string> ValuesNamed(BsonValue value, string elementName)
-    {
-        switch (value)
-        {
-            case BsonDocument document:
-                foreach (var element in document)
-                {
-                    if (element.Name == elementName && element.Value.IsString)
-                    {
-                        yield return element.Value.AsString;
-                    }
-
-                    foreach (var nested in ValuesNamed(element.Value, elementName))
-                    {
-                        yield return nested;
-                    }
-                }
-
-                break;
-
-            case BsonArray array:
-                foreach (var item in array)
-                {
-                    foreach (var nested in ValuesNamed(item, elementName))
-                    {
-                        yield return nested;
-                    }
-                }
-
-                break;
-        }
     }
 
     private static Complaint SampleComplaint(int id, string description) => new()

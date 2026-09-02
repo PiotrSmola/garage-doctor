@@ -7,6 +7,8 @@ namespace GarageDoctor.Infrastructure;
 
 public sealed class VehicleCatalogBuilder
 {
+    private const int RankingLimit = 12;
+
     private static readonly AggregateOptions Options = new() { AllowDiskUse = true };
 
     private readonly MongoContext _context;
@@ -39,6 +41,12 @@ public sealed class VehicleCatalogBuilder
         return written;
     }
 
+    /// <summary>
+    /// Rebuilds one document per canonical component group: its complaint count, the raw NHTSA
+    /// categories folded into it, its mileage histogram, the makes that file most complaints under it
+    /// and the vehicles it weighs on most. The vehicle ranking is read from the precomputed profiles,
+    /// so this runs after <see cref="ProfileBuilder.RebuildAllAsync"/>; without profiles it stays empty.
+    /// </summary>
     public async Task<long> RebuildComponentsAsync(CancellationToken cancellationToken = default)
     {
         var complaintCount = await EstimatedComplaintCountAsync(cancellationToken).ConfigureAwait(false);
@@ -46,6 +54,8 @@ public sealed class VehicleCatalogBuilder
         _logger.LogInformation("Rebuilding the component taxonomy from {ComplaintCount} complaints", complaintCount);
 
         await RunAsync(ComponentPipeline(), cancellationToken).ConfigureAwait(false);
+        await RunAsync(ComponentMakesPipeline(), cancellationToken).ConfigureAwait(false);
+        await RunOverProfilesAsync(ComponentVehiclesPipeline(), cancellationToken).ConfigureAwait(false);
 
         var written = await _context.Components
             .CountDocumentsAsync(FilterDefinition<ComponentTaxonomyEntry>.Empty, cancellationToken: cancellationToken)
@@ -92,6 +102,12 @@ public sealed class VehicleCatalogBuilder
             Options,
             cancellationToken);
 
+    private Task RunOverProfilesAsync(BsonDocument[] stages, CancellationToken cancellationToken) =>
+        _context.Profiles.AggregateToCollectionAsync(
+            PipelineDefinition<VehicleProfile, BsonDocument>.Create(stages),
+            Options,
+            cancellationToken);
+
     private static BsonDocument[] VehiclePipeline() =>
     [
         new("$match", new BsonDocument("modelYear", new BsonDocument("$ne", BsonNull.Value))),
@@ -121,12 +137,13 @@ public sealed class VehicleCatalogBuilder
         })
     ];
 
-    private static BsonDocument[] ComponentPipeline() =>
-    [
-        new("$group", new BsonDocument
+    private static BsonDocument[] ComponentPipeline()
+    {
+        var group = new BsonDocument
         {
             { "_id", "$component.group" },
             { "complaintCount", new BsonDocument("$sum", 1) },
+            { "withMileage", MileageHistogramStages.WithMileageAccumulator() },
             {
                 "topLevels", new BsonDocument("$addToSet", new BsonDocument("$ifNull", new BsonArray
                 {
@@ -134,33 +151,116 @@ public sealed class VehicleCatalogBuilder
                     BsonNull.Value
                 }))
             }
-        }),
-        new("$project", new BsonDocument
-        {
-            { "group", "$_id" },
-            { "complaintCount", 1 },
+        };
+
+        MileageHistogramStages.AddBucketAccumulators(group);
+
+        return
+        [
+            MileageHistogramStages.SetBucketIndexStage(),
+            new("$group", group),
+            new("$project", new BsonDocument
             {
-                "topLevels", new BsonDocument("$sortArray", new BsonDocument
+                { "group", "$_id" },
+                { "complaintCount", 1 },
+                { "withMileage", 1 },
                 {
+                    "topLevels", new BsonDocument("$sortArray", new BsonDocument
                     {
-                        "input", new BsonDocument("$filter", new BsonDocument
                         {
-                            { "input", "$topLevels" },
-                            { "cond", new BsonDocument("$ne", new BsonArray { "$$this", BsonNull.Value }) }
-                        })
-                    },
-                    { "sortBy", 1 }
+                            "input", new BsonDocument("$filter", new BsonDocument
+                            {
+                                { "input", "$topLevels" },
+                                { "cond", new BsonDocument("$ne", new BsonArray { "$$this", BsonNull.Value }) }
+                            })
+                        },
+                        { "sortBy", 1 }
+                    })
+                },
+                { "mileageHistogram", MileageHistogramStages.HistogramExpression() },
+                { "topMakes", new BsonArray() },
+                { "topVehicles", new BsonArray() }
+            }),
+            new("$merge", new BsonDocument
+            {
+                { "into", CollectionNames.Components },
+                { "on", "_id" },
+                { "whenMatched", "replace" },
+                { "whenNotMatched", "insert" }
+            })
+        ];
+    }
+
+    private static BsonDocument[] ComponentMakesPipeline() =>
+    [
+        new("$group", new BsonDocument
+        {
+            {
+                "_id", new BsonDocument
+                {
+                    { "group", "$component.group" },
+                    { "make", "$make" }
+                }
+            },
+            { "count", new BsonDocument("$sum", 1) }
+        }),
+        new("$group", new BsonDocument
+        {
+            { "_id", "$_id.group" },
+            {
+                "topMakes", new BsonDocument("$topN", new BsonDocument
+                {
+                    { "n", RankingLimit },
+                    { "sortBy", new BsonDocument { { "count", -1 }, { "_id.make", 1 } } },
+                    {
+                        "output", new BsonDocument
+                        {
+                            { "make", "$_id.make" },
+                            { "count", "$count" }
+                        }
+                    }
                 })
             }
         }),
+        MergeIntoComponentsStage()
+    ];
+
+    private static BsonDocument[] ComponentVehiclesPipeline() =>
+    [
+        new("$unwind", "$components"),
+        new("$group", new BsonDocument
+        {
+            { "_id", "$components.group" },
+            {
+                "topVehicles", new BsonDocument("$topN", new BsonDocument
+                {
+                    { "n", RankingLimit },
+                    { "sortBy", new BsonDocument { { "components.count", -1 }, { "_id", 1 } } },
+                    {
+                        "output", new BsonDocument
+                        {
+                            { "vehicleKey", "$_id" },
+                            { "make", "$make" },
+                            { "model", "$model" },
+                            { "modelYear", "$modelYear" },
+                            { "count", "$components.count" },
+                            { "totalComplaints", "$totalComplaints" }
+                        }
+                    }
+                })
+            }
+        }),
+        MergeIntoComponentsStage()
+    ];
+
+    private static BsonDocument MergeIntoComponentsStage() =>
         new("$merge", new BsonDocument
         {
             { "into", CollectionNames.Components },
             { "on", "_id" },
-            { "whenMatched", "replace" },
-            { "whenNotMatched", "insert" }
-        })
-    ];
+            { "whenMatched", "merge" },
+            { "whenNotMatched", "discard" }
+        });
 
     private static BsonDocument KeySegment(int position) =>
         new("$arrayElemAt", new BsonArray

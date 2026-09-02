@@ -7,10 +7,6 @@ namespace GarageDoctor.Infrastructure;
 
 public sealed class ProfileBuilder
 {
-    private const string BucketCountPrefix = "mileageBucket";
-
-    private const string BucketIndexField = "mileageBucketIndex";
-
     private static readonly AggregateOptions Options = new() { AllowDiskUse = true };
 
     private readonly MongoContext _context;
@@ -68,7 +64,7 @@ public sealed class ProfileBuilder
     private static BsonDocument[] ScalarsHistogramAndSeverityPipeline(DateTime computedAt) =>
     [
         KnownModelYearStage(),
-        new("$set", new BsonDocument(BucketIndexField, BucketIndexExpression())),
+        MileageHistogramStages.SetBucketIndexStage(),
         new("$group", ScalarGroup()),
         new("$project", ProfileProjection(computedAt)),
         MergeIntoProfilesStage()
@@ -152,26 +148,6 @@ public sealed class ProfileBuilder
             { "whenNotMatched", "insert" }
         });
 
-    private static BsonDocument BucketIndexExpression() =>
-        new("$cond", new BsonArray
-        {
-            new BsonDocument("$ne", new BsonArray { "$milesAtFailure", BsonNull.Value }),
-            new BsonDocument("$toInt", new BsonDocument("$min", new BsonArray
-            {
-                new BsonDocument("$max", new BsonArray
-                {
-                    new BsonDocument("$floor", new BsonDocument("$divide", new BsonArray
-                    {
-                        "$milesAtFailure",
-                        MileageBuckets.BucketSize
-                    })),
-                    0
-                }),
-                LastBucketIndex
-            })),
-            BsonNull.Value
-        });
-
     private static BsonDocument ScalarGroup()
     {
         var group = new BsonDocument
@@ -181,14 +157,7 @@ public sealed class ProfileBuilder
             { "model", new BsonDocument("$first", "$model") },
             { "modelYear", new BsonDocument("$first", "$modelYear") },
             { "totalComplaints", new BsonDocument("$sum", 1) },
-            {
-                "withMileage", new BsonDocument("$sum", new BsonDocument("$cond", new BsonArray
-                {
-                    new BsonDocument("$ne", new BsonArray { "$milesAtFailure", BsonNull.Value }),
-                    1,
-                    0
-                }))
-            },
+            { "withMileage", MileageHistogramStages.WithMileageAccumulator() },
             {
                 "mileageTotal", new BsonDocument("$sum", new BsonDocument("$ifNull", new BsonArray
                 {
@@ -205,15 +174,7 @@ public sealed class ProfileBuilder
             { "medicalAttention", FlagSum("$medicalAttention") }
         };
 
-        for (var index = 0; index <= LastBucketIndex; index++)
-        {
-            group.Add(BucketCountPrefix + index, new BsonDocument("$sum", new BsonDocument("$cond", new BsonArray
-            {
-                new BsonDocument("$eq", new BsonArray { "$" + BucketIndexField, index }),
-                1,
-                0
-            })));
-        }
+        MileageHistogramStages.AddBucketAccumulators(group);
 
         return group;
     }
@@ -229,7 +190,7 @@ public sealed class ProfileBuilder
             { "withMileage", 1 },
             { "averageMilesAtFailure", AverageMilesExpression() },
             { "components", new BsonArray() },
-            { "mileageHistogram", HistogramExpression() },
+            { "mileageHistogram", MileageHistogramStages.HistogramExpression() },
             { "timeline", new BsonArray() },
             { "severity", SeverityExpression() },
             { "computedAt", computedAt }
@@ -247,26 +208,6 @@ public sealed class ProfileBuilder
             BsonNull.Value
         });
 
-    private static BsonArray HistogramExpression()
-    {
-        var buckets = MileageBuckets.Empty();
-        var histogram = new BsonArray();
-
-        for (var index = 0; index < buckets.Count; index++)
-        {
-            var bucket = buckets[index];
-
-            histogram.Add(new BsonDocument
-            {
-                { "from", bucket.From },
-                { "to", bucket.To is int upperBound ? new BsonInt32(upperBound) : BsonNull.Value },
-                { "count", "$" + BucketCountPrefix + index }
-            });
-        }
-
-        return histogram;
-    }
-
     private static BsonDocument SeverityExpression() =>
         new()
         {
@@ -281,8 +222,6 @@ public sealed class ProfileBuilder
 
     private static BsonDocument FlagSum(string fieldPath) =>
         new("$sum", new BsonDocument("$cond", new BsonArray { fieldPath, 1, 0 }));
-
-    private static int LastBucketIndex => MileageBuckets.LastBucketStart / MileageBuckets.BucketSize;
 
     private static DateTime TruncatedToMilliseconds(DateTime value) =>
         new(value.Ticks - (value.Ticks % TimeSpan.TicksPerMillisecond), DateTimeKind.Utc);

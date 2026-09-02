@@ -242,7 +242,7 @@ public sealed class ProfileBuilderTests(MongoFixture fixture)
             },
             cancellationToken: CancellationToken.None);
 
-        var stages = ValuesNamed(explain, "stage").ToArray();
+        var stages = ExplainPlans.Stages(explain);
 
         Assert.NotEmpty(stages);
         Assert.Contains(stages, stage => stage.EndsWith("IXSCAN", StringComparison.Ordinal));
@@ -357,38 +357,5 @@ public sealed class ProfileBuilderTests(MongoFixture fixture)
         }
 
         return documents;
-    }
-
-    private static IEnumerable<string> ValuesNamed(BsonValue value, string elementName)
-    {
-        switch (value)
-        {
-            case BsonDocument document:
-                foreach (var element in document)
-                {
-                    if (element.Name == elementName && element.Value.IsString)
-                    {
-                        yield return element.Value.AsString;
-                    }
-
-                    foreach (var nested in ValuesNamed(element.Value, elementName))
-                    {
-                        yield return nested;
-                    }
-                }
-
-                break;
-
-            case BsonArray array:
-                foreach (var item in array)
-                {
-                    foreach (var nested in ValuesNamed(item, elementName))
-                    {
-                        yield return nested;
-                    }
-                }
-
-                break;
-        }
     }
 }

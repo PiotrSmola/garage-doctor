@@ -46,6 +46,39 @@ public sealed class IngestPipeline
 
     public async Task RunAsync(IngestArguments arguments, CancellationToken cancellationToken = default)
     {
+        ComplaintIngestReport? complaints = null;
+
+        if (arguments.RebuildOnly)
+        {
+            _logger.LogInformation("Rebuilding the derived collections and indexes from the complaints and recalls already in MongoDB");
+        }
+        else
+        {
+            complaints = await IngestFlatFilesAsync(arguments, cancellationToken).ConfigureAwait(false);
+        }
+
+        var vehicles = await _catalogBuilder.RebuildVehiclesAsync(cancellationToken).ConfigureAwait(false);
+
+        await _indexBuilder.CreateAllAsync(cancellationToken).ConfigureAwait(false);
+
+        var profiles = await _profileBuilder.RebuildAllAsync(cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("Precomputed {ProfileCount} vehicle profiles", profiles);
+
+        // The component taxonomy ranks vehicles from the profiles, so it is rebuilt after them.
+        var components = await _catalogBuilder.RebuildComponentsAsync(cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("Catalog rebuilt: {VehicleCount} vehicles, {ComponentCount} component groups", vehicles, components);
+
+        if (complaints is not null)
+        {
+            await WriteReportsAsync(arguments.DataDirectory, complaints, cancellationToken).ConfigureAwait(false);
+        }
+
+        var report = await new AcceptanceReport(_context).RenderAsync(cancellationToken).ConfigureAwait(false);
+        Console.WriteLine(report);
+    }
+
+    private async Task<ComplaintIngestReport> IngestFlatFilesAsync(IngestArguments arguments, CancellationToken cancellationToken)
+    {
         await _dataFiles.EnsureAsync(cancellationToken).ConfigureAwait(false);
 
         if (arguments.Resume)
@@ -70,19 +103,7 @@ public sealed class IngestPipeline
             await _recallIngest.IngestAsync(_dataFiles.RecallFiles, cancellationToken).ConfigureAwait(false);
         }
 
-        var vehicles = await _catalogBuilder.RebuildVehiclesAsync(cancellationToken).ConfigureAwait(false);
-        var components = await _catalogBuilder.RebuildComponentsAsync(cancellationToken).ConfigureAwait(false);
-        _logger.LogInformation("Catalog rebuilt: {VehicleCount} vehicles, {ComponentCount} component groups", vehicles, components);
-
-        await _indexBuilder.CreateAllAsync(cancellationToken).ConfigureAwait(false);
-
-        var profiles = await _profileBuilder.RebuildAllAsync(cancellationToken).ConfigureAwait(false);
-        _logger.LogInformation("Precomputed {ProfileCount} vehicle profiles", profiles);
-
-        await WriteReportsAsync(arguments.DataDirectory, complaints, cancellationToken).ConfigureAwait(false);
-
-        var report = await new AcceptanceReport(_context).RenderAsync(cancellationToken).ConfigureAwait(false);
-        Console.WriteLine(report);
+        return complaints;
     }
 
     private async Task DropCollectionsAsync(CancellationToken cancellationToken)

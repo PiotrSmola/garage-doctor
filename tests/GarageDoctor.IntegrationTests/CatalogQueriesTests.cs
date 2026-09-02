@@ -3,6 +3,7 @@ using GarageDoctor.Domain.Models;
 using GarageDoctor.Infrastructure;
 using GarageDoctor.Infrastructure.Queries;
 using Microsoft.Extensions.Logging.Abstractions;
+using MongoDB.Bson;
 
 namespace GarageDoctor.IntegrationTests;
 
@@ -142,6 +143,69 @@ public sealed class CatalogQueriesTests(MongoFixture fixture)
         Assert.Null(detail);
     }
 
+    [Fact]
+    public async Task LatestAdvisoriesListFlaggedCampaignsNewestFirstWithTheirVehicleCount()
+    {
+        var context = await SeededContextAsync();
+        await SeedAdvisoryRecallsAsync(context);
+
+        var advisories = await new MongoRecallQueries(context).GetLatestAdvisoriesAsync(5, CancellationToken.None);
+
+        Assert.Equal(["24V100000", "23V456000"], advisories.Select(advisory => advisory.CampaignNumber));
+        Assert.Equal(1, advisories[0].VehicleCount);
+        Assert.Equal(2, advisories[1].VehicleCount);
+        Assert.True(advisories[1].DoNotDrive);
+        Assert.True(advisories[1].ParkOutside);
+    }
+
+    [Fact]
+    public async Task AdvisoryLookupReadsThePartialIndexesRatherThanTheWholeCollection()
+    {
+        var context = await SeededContextAsync();
+        await SeedAdvisoryRecallsAsync(context);
+        await new IndexBuilder(context, NullLogger<IndexBuilder>.Instance).CreateAllAsync(CancellationToken.None);
+
+        var explain = await context.Database.RunCommandAsync<BsonDocument>(
+            new BsonDocument
+            {
+                {
+                    "explain", new BsonDocument
+                    {
+                        { "aggregate", CollectionNames.Recalls },
+                        {
+                            "pipeline", new BsonArray
+                            {
+                                new BsonDocument("$match", new BsonDocument("$or", new BsonArray
+                                {
+                                    new BsonDocument("doNotDrive", true),
+                                    new BsonDocument("parkOutside", true)
+                                }))
+                            }
+                        },
+                        { "cursor", new BsonDocument() }
+                    }
+                },
+                { "verbosity", "executionStats" }
+            },
+            cancellationToken: CancellationToken.None);
+
+        var indexNames = ExplainPlans.IndexNames(explain);
+
+        Assert.Contains("recalls_doNotDrive_flagged", indexNames);
+        Assert.Contains("recalls_parkOutside_flagged", indexNames);
+        Assert.DoesNotContain(ExplainPlans.Stages(explain), stage => stage.EndsWith("COLLSCAN", StringComparison.Ordinal));
+    }
+
+    private static Task SeedAdvisoryRecallsAsync(MongoContext context) =>
+        context.Recalls.InsertManyAsync(
+            [
+                Recall(1, "23V456000", "volkswagen|golf|2015", "GOLF", 2015, doNotDrive: false, parkOutside: true, potentiallyAffected: 1200, reportReceivedDate: new DateOnly(2023, 5, 1)),
+                Recall(2, "23V456000", "volkswagen|golf|2016", "GOLF", 2016, doNotDrive: true, parkOutside: false, potentiallyAffected: 900, reportReceivedDate: new DateOnly(2023, 5, 1)),
+                Recall(3, "24V100000", "audi|a3|2015", "A3", 2015, doNotDrive: true, parkOutside: false, potentiallyAffected: 300, reportReceivedDate: new DateOnly(2024, 1, 15)),
+                Recall(4, "22V999000", "volkswagen|passat|2014", "PASSAT", 2014, doNotDrive: false, parkOutside: false, potentiallyAffected: 5000, reportReceivedDate: new DateOnly(2022, 1, 1))
+            ],
+            cancellationToken: CancellationToken.None);
+
     private async Task<MongoContext> SeededContextAsync()
     {
         var context = new MongoContext(fixture.CreateClient(), $"queries_{Guid.NewGuid():N}");
@@ -236,7 +300,8 @@ public sealed class CatalogQueriesTests(MongoFixture fixture)
         int modelYear,
         bool doNotDrive,
         bool parkOutside,
-        int potentiallyAffected) => new()
+        int potentiallyAffected,
+        DateOnly? reportReceivedDate = null) => new()
     {
         Id = id,
         CampaignNumber = campaignNumber,
@@ -250,6 +315,7 @@ public sealed class CatalogQueriesTests(MongoFixture fixture)
         ComponentGroup = "POWER TRAIN",
         RecallType = "V",
         PotentiallyAffected = potentiallyAffected,
+        ReportReceivedDate = reportReceivedDate,
         DefectDescription = "Synthetic defect summary.",
         Consequence = "Synthetic consequence summary.",
         CorrectiveAction = "Synthetic corrective action.",

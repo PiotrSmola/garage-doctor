@@ -145,10 +145,42 @@ public sealed class VehicleCatalogBuilderTests(MongoFixture fixture)
         Assert.Equal("ENGINE", engine.Group);
         Assert.Equal(4, engine.ComplaintCount);
         Assert.Equal(["ENGINE", "ENGINE AND ENGINE COOLING"], engine.TopLevels);
+        Assert.Empty(engine.TopVehicles);
 
         var powerTrain = await RequireComponentAsync(context, "POWER TRAIN");
         Assert.Equal(4, powerTrain.ComplaintCount);
         Assert.Equal(["POWER TRAIN"], powerTrain.TopLevels);
+    }
+
+    [Fact]
+    public async Task RebuildComponentsPrecomputesTheHistogramAndBothRankings()
+    {
+        var context = CreateContext();
+        await SeedAsync(context, Sample());
+        await new ProfileBuilder(context, NullLogger<ProfileBuilder>.Instance).RebuildAllAsync(CancellationToken.None);
+
+        await CreateBuilder(context).RebuildComponentsAsync(CancellationToken.None);
+
+        var engine = await RequireComponentAsync(context, "ENGINE");
+
+        Assert.Equal(4, engine.WithMileage);
+        Assert.Equal(
+            MileageBuckets.Empty().Select(bucket => bucket.From),
+            engine.MileageHistogram.Select(bucket => bucket.From));
+        Assert.Equal(4, engine.MileageHistogram[1].Count);
+        Assert.Equal(4, engine.MileageHistogram.Sum(bucket => bucket.Count));
+
+        Assert.Equal(
+            [("AUDI", 2), ("VOLKSWAGEN", 2)],
+            engine.TopMakes.Select(make => (make.Make, make.Count)).ToArray());
+
+        Assert.Equal(
+            [("volkswagen|golf|2015", 2), ("audi|a3|2015", 1)],
+            engine.TopVehicles.Select(vehicle => (vehicle.VehicleKey, vehicle.Count)).ToArray());
+        Assert.Equal("VOLKSWAGEN", engine.TopVehicles[0].Make);
+        Assert.Equal("GOLF", engine.TopVehicles[0].Model);
+        Assert.Equal(2015, engine.TopVehicles[0].ModelYear);
+        Assert.Equal(4, engine.TopVehicles[0].TotalComplaints);
     }
 
     [Fact]

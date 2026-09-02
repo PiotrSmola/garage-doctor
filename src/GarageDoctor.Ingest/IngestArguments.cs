@@ -6,6 +6,12 @@ public sealed class IngestArguments
 
     public bool SkipRecalls { get; init; }
 
+    /// <summary>
+    /// Skip the flat files entirely and recompute the catalogue, the indexes, the profiles and the
+    /// component taxonomy from the complaints and recalls already in MongoDB.
+    /// </summary>
+    public bool RebuildOnly { get; init; }
+
     public long? RecordLimit { get; init; }
 
     public string DataDirectory { get; init; } = "data";
@@ -14,6 +20,7 @@ public sealed class IngestArguments
     {
         var resume = false;
         var skipRecalls = false;
+        var rebuildOnly = false;
         long? recordLimit = null;
         var dataDirectory = "data";
 
@@ -26,6 +33,10 @@ public sealed class IngestArguments
             else if (argument.Equals("--skip-recalls", StringComparison.OrdinalIgnoreCase))
             {
                 skipRecalls = true;
+            }
+            else if (argument.Equals("--rebuild-only", StringComparison.OrdinalIgnoreCase))
+            {
+                rebuildOnly = true;
             }
             else if (argument.StartsWith("--limit=", StringComparison.OrdinalIgnoreCase)
                 && long.TryParse(argument["--limit=".Length..], out var limit))
@@ -42,6 +53,7 @@ public sealed class IngestArguments
         {
             Resume = resume,
             SkipRecalls = skipRecalls,
+            RebuildOnly = rebuildOnly,
             RecordLimit = recordLimit,
             DataDirectory = dataDirectory
         };

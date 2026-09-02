@@ -61,7 +61,7 @@ These belong on screen next to every chart, not just in a readme.
 
 **MongoDB without EF Core.** A complaint is a natural document: a vehicle, a component hierarchy, a narrative and event flags. A text index over the narrative gives full-text search with no extra infrastructure, and one aggregation pipeline computes every failure profile in a single pass. Skipping the ORM is deliberate — it puts index design, aggregation and document mapping in plain sight.
 
-**Precomputed profiles.** The `profiles` collection is intentional denormalization. The profile for `audi|a3|2015` is computed once during ingest rather than on every page view, which is the tradeoff between normalization and response time made explicit.
+**Precomputed profiles.** The `profiles` collection is intentional denormalization. The profile for `audi|a3|2015` is computed once during ingest rather than on every page view, which is the tradeoff between normalization and response time made explicit. The `components` collection carries the same kind of material per component group: its mileage histogram, the makes filing most complaints under it and the vehicles it weighs on most, so a component page is one document read instead of three aggregations over 2.2 million complaints.
 
 **Testcontainers.** Integration tests run against a real `mongo:8` container started for the test run, so index behaviour, aggregation results and BSON mapping are verified against the actual database rather than a mock.
 
@@ -77,7 +77,7 @@ There is no .NET SDK on the host; everything runs in containers.
 ./make.ps1 mongo     # mongosh on the garagedoctor database
 ```
 
-The ingest console accepts `--resume` (keep existing collections), `--limit=N` (stop after N documents, useful for a smoke run), `--skip-recalls` and `--data-dir=path`. It downloads and unpacks the source files itself when they are missing.
+The ingest console accepts `--resume` (keep existing collections), `--limit=N` (stop after N documents, useful for a smoke run), `--skip-recalls`, `--data-dir=path` and `--rebuild-only` (skip the flat files and recompute the catalogue, indexes, profiles and component taxonomy from what is already in MongoDB, which is how an existing database picks up a new index or a new precomputed field). It downloads and unpacks the source files itself when they are missing.
 
 Mongo Express is on `http://127.0.0.1:8091`, the web application on `http://127.0.0.1:5080`.
 
