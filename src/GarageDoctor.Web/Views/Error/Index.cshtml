@@ -1,0 +1,56 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "Request failed";
+    var serverSide = Model.StatusCode >= 500;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/pages/recalls.css" asp-append-version="true" />
+}
+
+<header class="page-head">
+    <p class="eyebrow">@Model.StatusCode</p>
+    <h1>@(serverSide ? "Something failed on our side" : "That request could not be completed")</h1>
+    @if (Model.ShowRequestedPath)
+    {
+        <p class="page-head__meta">
+            Requested: <span class="request-id">@Model.RequestedPath</span>
+        </p>
+    }
+</header>
+
+<div class="prose">
+    @if (serverSide)
+    {
+        <p>
+            The page did not finish rendering. This is a fault in the application or in the
+            database behind it, not something you did, and nothing you were looking at has been
+            changed or lost.
+        </p>
+        <p>
+            Reloading is worth one attempt. If it fails again, the underlying query is probably
+            the problem and it will need fixing at our end rather than yours.
+        </p>
+    }
+    else
+    {
+        <p>
+            The request was rejected before a page could be produced. Check the address and try
+            again, or start from the catalogue.
+        </p>
+    }
+</div>
+
+@if (Model.ShowRequestId)
+{
+    <div class="notice">
+        <div class="notice__title">Request id</div>
+        <p class="request-id">@Model.RequestId</p>
+        <p class="muted">Quote this when reporting the problem. It identifies this single request in the server logs and contains nothing about you.</p>
+    </div>
+}
+
+<div class="actions">
+    <a class="button button--quiet" href="/">Back to search</a>
+    <a class="button button--quiet" href="/makes">Browse every make</a>
+</div>

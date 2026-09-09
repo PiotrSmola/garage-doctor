@@ -1,0 +1,34 @@
+@model SeveritySignalsViewModel
+
+<section class="panel" id="outcomes" aria-labelledby="outcomes-heading">
+    <div class="panel__head">
+        <h2 id="outcomes-heading">Reported outcomes</h2>
+        <p class="panel__note">Counted across all <span class="num">@Model.TotalComplaints.ToString("N0")</span> reports</p>
+    </div>
+
+    @if (Model.HasSevereOutcome)
+    {
+        <div class="notice notice--severe">
+            <p class="notice__title">Serious outcomes in the record</p>
+            <p>@Model.SevereSummary</p>
+        </div>
+    }
+
+    <div class="stat-row">
+        @foreach (var signal in Model.Signals)
+        {
+            var signalClass = signal.Highlighted ? "stat stat--alert" : "stat";
+
+            <div class="@signalClass">
+                <div class="stat__value">@signal.Count.ToString("N0")</div>
+                <div class="stat__label">@signal.Label</div>
+            </div>
+        }
+    </div>
+
+    <p class="caveat">
+        Every figure counts complaints, not vehicles, people or verified events. A zero means no owner
+        reported that outcome in this model year, which is not the same as it never having happened.
+        Crashes, injuries and deaths are self-declared on the complaint form and are not confirmed by NHTSA.
+    </p>
+</section>

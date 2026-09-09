@@ -1,8 +1,296 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@model HomeIndexViewModel
+
+<div class="page-head">
+    <p class="eyebrow">NHTSA Office of Defects Investigation</p>
+    <h1>What owners reported, by make, model and year</h1>
+    <p class="page-head__meta">
+        Garage Doctor reads the complaint and recall files published by the United States road safety regulator.
+        Pick a make, then a model, then a model year to see which components owners complained about and at what
+        mileage the fault turned up.
+    </p>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Find a vehicle</h2>
+        <p class="panel__note">Three steps, one page load each. Works with JavaScript turned off.</p>
+    </div>
+
+    @if (Model.Cascade.UnresolvedMake is not null)
+    {
+        <div class="notice">
+            <div class="notice__title">No make matches that name</div>
+            Nothing in the catalog is filed under <strong>@Model.Cascade.UnresolvedMake</strong>. Choose one from the list.
+        </div>
+    }
+
+    <form class="cascade" method="get" asp-controller="Home" asp-action="Index" data-cascade>
+        <div class="field">
+            <label for="make">1 &middot; Make</label>
+            <select id="make" name="make">
+                <option value="">Select a make</option>
+                @if (Model.Cascade.FrequentMakes.Count > 0)
+                {
+                    <optgroup label="Most reported">
+                        @foreach (var make in Model.Cascade.FrequentMakes)
+                        {
+                            <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                        }
+                    </optgroup>
+                }
+                <optgroup label="Every make, alphabetical">
+                    @foreach (var make in Model.Cascade.Makes)
+                    {
+                        <option value="@make.Slug" selected="@(make.Slug == Model.Cascade.SelectedMakeSlug)">@make.Name</option>
+                    }
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="model">2 &middot; Model</label>
+            <select id="model" name="model" disabled="@(!Model.Cascade.ModelStepReady)">
+                <option value="">@(Model.Cascade.ModelStepReady ? "Select a model" : "Choose a make first")</option>
+                @foreach (var vehicleModel in Model.Cascade.Models)
+                {
+                    <option value="@vehicleModel.Slug" selected="@(vehicleModel.Slug == Model.Cascade.SelectedModelSlug)">@vehicleModel.Name &middot; @vehicleModel.ComplaintCount.ToString("N0")</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="year">3 &middot; Model year</label>
+            <select id="year" name="year" disabled="@(!Model.Cascade.YearStepReady)">
+                <option value="">@(Model.Cascade.YearStepReady ? "Select a year" : "Choose a model first")</option>
+                @foreach (var year in Model.Cascade.Years)
+                {
+                    <option value="@year.ModelYear">@year.ModelYear &middot; @year.ComplaintCount.ToString("N0")</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <button type="submit">@(Model.Cascade.YearStepReady ? "Open profile" : "Continue")</button>
+        </div>
+    </form>
+
+    @if (Model.Cascade.YearStepReady)
+    {
+        <p class="caveat">
+            @Model.Cascade.SelectedMakeName @Model.Cascade.SelectedModelName is on file for
+            @Model.Cascade.Years.Count model years, newest first, with the complaint count beside each one.
+            <a asp-controller="Home" asp-action="Index">Start again</a>.
+        </p>
+    }
+    else if (Model.Cascade.ModelStepReady)
+    {
+        <p class="caveat">
+            @Model.Cascade.SelectedMakeName has @Model.Cascade.Models.Count models in the catalog, ordered by
+            complaint count.
+            <a asp-controller="Makes" asp-action="Details" asp-route-makeSlug="@Model.Cascade.SelectedMakeSlug">See them as a table</a>,
+            or <a asp-controller="Home" asp-action="Index">start again</a>.
+        </p>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>What the database holds</h2>
+        <p class="panel__note">Counted at the last ingest</p>
+    </div>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Complaints.ToString("N0")</div>
+            <div class="stat__label">Complaints</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Recalls.ToString("N0")</div>
+            <div class="stat__label">Recall rows</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.VehicleCombinations.ToString("N0")</div>
+            <div class="stat__label">Vehicle combinations</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.Overview.Makes.ToString("N0")</div>
+            <div class="stat__label">Makes</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.MileageShare</div>
+            <div class="stat__label">Complaints with a mileage reading</div>
+        </div>
+        <div class="stat">
+            <div class="stat__value">@Model.ModelYearSpan</div>
+            <div class="stat__label">Model years covered</div>
+        </div>
+    </div>
+    <p class="caveat">
+        A recall row is one campaign against one model and one model year, so a single campaign covering a whole
+        product line contributes many rows.
+    </p>
+</section>
+
+@if (Model.Advisories.Count > 0)
+{
+    <section class="panel">
+        <div class="panel__head">
+            <h2>Latest consumer advisories</h2>
+            <p class="panel__note">The strongest warnings NHTSA issues</p>
+        </div>
+        <p>
+            A do-not-drive advisory means the manufacturer is telling owners to stop driving the vehicle until it is
+            repaired. A park-outside advisory means it can catch fire while parked, so it should be kept away from
+            buildings. Both were added to the recall file in May 2025.
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Campaign</th>
+                    <th>Make</th>
+                    <th>Component</th>
+                    <th>Advisory</th>
+                    <th class="num">Vehicles</th>
+                    <th class="num">Reported</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var advisory in Model.Advisories)
+                {
+                    <tr>
+                        <td><a asp-controller="Recalls" asp-action="Details" asp-route-campaignNumber="@advisory.CampaignNumber">@advisory.CampaignNumber</a></td>
+                        <td>@advisory.Make</td>
+                        <td class="muted">@advisory.ComponentName</td>
+                        <td>
+                            @if (advisory.DoNotDrive && advisory.ParkOutside)
+                            {
+                                <text>Do not drive, park outside</text>
+                            }
+                            else if (advisory.DoNotDrive)
+                            {
+                                <text>Do not drive</text>
+                            }
+                            else
+                            {
+                                <text>Park outside</text>
+                            }
+                        </td>
+                        <td class="num">@advisory.VehicleCount.ToString("N0")</td>
+                        <td class="num">@(advisory.ReportReceivedDate?.ToString("yyyy-MM-dd") ?? "not recorded")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="panel">
+    <div class="panel__head">
+        <h2>Most reported makes</h2>
+        <a class="panel__note" asp-controller="Makes" asp-action="Index">All @Model.Overview.Makes.ToString("N0") makes</a>
+    </div>
+    <div class="bars">
+        @foreach (var make in Model.TopMakes)
+        {
+            <div class="bar">
+                <a class="bar__label" asp-controller="Makes" asp-action="Details" asp-route-makeSlug="@make.Slug">@make.Name</a>
+                <span class="bar__track"><span class="bar__fill" style="width: @make.BarWidth"></span></span>
+                <span class="bar__value">@make.ComplaintCount.ToString("N0")</span>
+            </div>
+        }
+    </div>
+    <p class="caveat">
+        Complaints are filed voluntarily, so this ranks reporting volume, not reliability. A make that sold in
+        larger numbers collects more complaints regardless of how well it was built, and nothing here is
+        normalized by fleet size, because NHTSA does not publish how many vehicles are on the road.
+    </p>
+</section>
+
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>Most reported vehicles</h2>
+        <p class="panel__note">One make, model and year each</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Vehicle</th>
+                <th class="num">Complaints</th>
+                <th class="num">With mileage</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var vehicle in Model.TopVehicles)
+            {
+                <tr>
+                    <td>
+                        <a asp-controller="Vehicles" asp-action="Profile"
+                           asp-route-makeSlug="@vehicle.MakeSlug"
+                           asp-route-modelSlug="@vehicle.ModelSlug"
+                           asp-route-modelYear="@vehicle.ModelYear">@vehicle.Make @vehicle.Model @vehicle.ModelYear</a>
+                    </td>
+                    <td class="num">@vehicle.TotalComplaints.ToString("N0")</td>
+                    <td class="num">@vehicle.WithMileage.ToString("N0")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <p class="caveat">
+        These are the cars owners filed the most reports about, which tracks sales volume and model longevity as
+        much as anything else. Open one to see what actually failed and at what mileage.
+    </p>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>What breaks most often</h2>
+        <a class="panel__note" href="/components">All @Model.Overview.Complaints.ToString("N0") complaints by component</a>
+    </div>
+    <div class="bars">
+        @foreach (var component in Model.TopComponents)
+        {
+            <div class="bar bar--alt">
+                <a class="bar__label" href="/components/@component.Slug">@component.Group</a>
+                <span class="bar__track"><span class="bar__fill" style="width: @component.BarWidth"></span></span>
+                <span class="bar__value">@component.ComplaintCount.ToString("N0")</span>
+            </div>
+        }
+    </div>
+    <p class="caveat">
+        NHTSA changed its component taxonomy repeatedly over thirty years, so 55 raw top-level categories are folded
+        into 26 canonical groups through a hand-edited map. Engine and engine cooling were the same thing all along.
+    </p>
+</section>
+
+<section class="panel">
+    <div class="panel__head">
+        <h2>How to read a failure profile</h2>
+    </div>
+    <p>
+        The mileage histogram is the part worth your attention. Roughly half of all complaints carry the odometer
+        reading at the moment the fault appeared, and plotting those readings tells you something no specification
+        sheet does: whether a part fails early or wears out.
+    </p>
+    <p>
+        Volkswagen power train reports are the clearest example in the set. They peak in the first 25 000 miles,
+        drop by more than half in the next bucket, then rise again between 50 000 and 100 000. That first peak is the
+        warranty period, when owners report everything, and the second is genuine wear. A single average would hide
+        both.
+    </p>
+    <p class="caveat">
+        Every histogram in this application states how many reports it was built from, because a shape drawn from
+        twelve readings deserves less trust than one drawn from three thousand.
+    </p>
+</section>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('form[data-cascade] select').forEach(function (field) {
+            field.addEventListener('change', function () {
+                if (field.value !== '') {
+                    field.form.submit();
+                }
+            });
+        });
+    </script>
+}

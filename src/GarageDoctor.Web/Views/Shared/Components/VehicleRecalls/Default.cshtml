@@ -1,0 +1,69 @@
+@model VehicleRecallsViewModel
+
+<section class="panel" id="recalls" aria-labelledby="recalls-heading">
+    <div class="panel__head">
+        <h2 id="recalls-heading">Recall campaigns</h2>
+        <p class="panel__note">
+            @Model.Campaigns.Count.ToString("N0") campaigns name this exact make, model and year
+        </p>
+    </div>
+
+    @foreach (var urgent in Model.UrgentCampaigns)
+    {
+        <div class="notice notice--severe">
+            <p class="notice__title">@urgent.UrgencyLabel</p>
+            <p>
+                NHTSA issued its strongest warning on campaign
+                <a href="/recalls/@urgent.CampaignNumber">@urgent.CampaignNumber</a>, covering
+                @urgent.ComponentGroup.ToLowerInvariant().
+            </p>
+            <p>@urgent.Consequence</p>
+        </div>
+    }
+
+    @if (!Model.HasCampaigns)
+    {
+        <div class="empty">
+            No recall campaign in the NHTSA file names this make, model and year. Campaigns are recorded per
+            model year, so a neighbouring year may still be affected.
+        </div>
+    }
+    else
+    {
+        <ol class="recall-list">
+            @foreach (var campaign in Model.Campaigns)
+            {
+                <li class="recall">
+                    <div class="recall__head">
+                        <a class="recall__id" href="/recalls/@campaign.CampaignNumber">@campaign.CampaignNumber</a>
+                        <span class="recall__date">@campaign.ReceivedLabel</span>
+                    </div>
+                    <p class="recall__component">
+                        <span class="eyebrow">@campaign.ComponentGroup</span>
+                        @string.Join(", ", campaign.ComponentNames)
+                    </p>
+                    <p class="recall__text">@campaign.DefectDescription</p>
+                    @if (!string.IsNullOrWhiteSpace(campaign.Consequence))
+                    {
+                        <p class="recall__text"><span class="muted">Consequence.</span> @campaign.Consequence</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(campaign.CorrectiveAction))
+                    {
+                        <p class="recall__text"><span class="muted">Remedy.</span> @campaign.CorrectiveAction</p>
+                    }
+                    <p class="recall__figure">
+                        Potentially affected across every model in the campaign:
+                        <span class="num">@campaign.AffectedLabel</span>
+                    </p>
+                </li>
+            }
+        </ol>
+
+        <p class="caveat">
+            One campaign can cover many makes, models and years, so the affected count above is for the whole
+            campaign and not for this model year alone. A recall is a manufacturer obligation, not a complaint,
+            and it is repaired free of charge. Check the vehicle identification number with the manufacturer
+            before assuming a given car was included.
+        </p>
+    }
+</section>

@@ -1,0 +1,53 @@
+@model ComplaintTimelineViewModel
+
+<section class="panel" id="timeline" aria-labelledby="timeline-heading">
+    <div class="panel__head">
+        <h2 id="timeline-heading">Reports per year</h2>
+        <p class="panel__note">@Model.PeakLine</p>
+    </div>
+
+    @if (!Model.HasPoints)
+    {
+        <div class="empty">No report for this vehicle carries a date NHTSA could file it under.</div>
+    }
+    else
+    {
+        <div class="chart-frame" data-timeline-frame hidden>
+            <canvas class="chart" data-timeline="@Model.ChartPayload" aria-label="Complaints received per calendar year"></canvas>
+        </div>
+
+        <noscript>
+            <table class="timeline-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Year received</th>
+                        <th scope="col" class="num">Reports</th>
+                        <th scope="col">Relative volume</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var point in Model.Points)
+                    {
+                        <tr>
+                            <td class="num">@point.Year</td>
+                            <td class="num">@point.Count.ToString("N0")</td>
+                            <td>
+                                <span class="bar__track"><span class="bar__fill" style="width: @point.WidthPercent%"></span></span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </noscript>
+
+        <p class="caveat">
+            The year is when NHTSA received the complaint, not when the fault occurred, and the two can be years
+            apart. A recall, a news story or a class action lifts the count for a year without anything changing
+            in the car.
+            @if (Model.LastYearIsPartial)
+            {
+                <text>The last year shown is still in progress and will keep rising.</text>
+            }
+        </p>
+    }
+</section>

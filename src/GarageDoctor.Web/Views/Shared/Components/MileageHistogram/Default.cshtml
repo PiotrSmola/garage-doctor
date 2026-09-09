@@ -1,0 +1,54 @@
+@model MileageHistogramViewModel
+
+<section class="panel" id="mileage" aria-labelledby="mileage-heading">
+    <div class="panel__head">
+        <h2 id="mileage-heading">Mileage at failure</h2>
+        <p class="panel__note">@Model.SampleLine</p>
+    </div>
+
+    @if (!Model.HasSample)
+    {
+        <div class="empty">
+            Not one report for this vehicle carried an odometer reading, so there is no distribution to draw.
+            Mileage is missing from roughly half of all NHTSA complaints.
+        </div>
+    }
+    else
+    {
+        @if (Model.HasThinSample)
+        {
+            <div class="notice notice--caution">
+                <p class="notice__title">Thin sample</p>
+                <p>
+                    Only @Model.WithMileage.ToString("N0") reports carry an odometer reading. The bars below are drawn
+                    for completeness, not as a pattern. A shape read from this few records is noise.
+                </p>
+            </div>
+        }
+
+        <div class="bars histogram">
+            <div class="bar bar--head">
+                <span class="bar__label">Miles at failure</span>
+                <span></span>
+                <span class="bar__value">Reports</span>
+                <span class="bar__share">Share</span>
+            </div>
+            @foreach (var bucket in Model.Buckets)
+            {
+                <div class="bar">
+                    <span class="bar__label">@bucket.Label</span>
+                    <span class="bar__track"><span class="bar__fill" style="width: @bucket.WidthPercent%"></span></span>
+                    <span class="bar__value">@bucket.Count.ToString("N0")</span>
+                    <span class="bar__share">@bucket.ShareLabel</span>
+                </div>
+            }
+        </div>
+
+        <p class="caveat">
+            Buckets are 25,000 miles wide and the last one is open ended. Shares are of the
+            @Model.WithMileage.ToString("N0") reports that recorded an odometer reading, not of all
+            @Model.TotalComplaints.ToString("N0") reports. Owners type the mileage themselves, so round
+            numbers are over-represented and a first bucket swollen by warranty-period reporting is normal.
+        </p>
+    }
+</section>

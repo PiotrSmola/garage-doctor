@@ -1,0 +1,151 @@
+.prose {
+    max-width: 34rem;
+}
+
+.prose p {
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.prose--source p {
+    white-space: pre-line;
+}
+
+.prose p:last-child {
+    margin-bottom: 0;
+}
+
+.prose--wide {
+    max-width: 42rem;
+}
+
+.advisory {
+    border-left-width: 4px;
+    padding: 1.15rem 1.35rem;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.advisory__label {
+    color: var(--accent);
+    margin: 0 0 0.4rem;
+}
+
+.advisory__lede {
+    font-size: 1.08rem;
+    font-weight: 600;
+    line-height: 1.45;
+    margin-bottom: 0.55rem;
+}
+
+.advisory p {
+    max-width: 42rem;
+}
+
+.advisory p:last-child {
+    margin-bottom: 0;
+}
+
+.advisory + .page-head {
+    margin-top: 1.75rem;
+}
+
+.campaign-figures {
+    margin-bottom: 1.5rem;
+}
+
+.coverage__make {
+    margin: 1.5rem 0 0.5rem;
+}
+
+.coverage__make:first-of-type {
+    margin-top: 0;
+}
+
+.coverage td {
+    vertical-align: top;
+}
+
+.coverage th:last-child,
+.coverage td:last-child {
+    width: 70%;
+}
+
+.years {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.75rem;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+}
+
+.years span {
+    color: var(--ink-3);
+}
+
+.doc h2 {
+    margin: 2.25rem 0 0.6rem;
+}
+
+.doc section:first-of-type h2 {
+    margin-top: 0;
+}
+
+.doc .prose {
+    margin-bottom: 0;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.5rem;
+}
+
+.reasons {
+    max-width: 34rem;
+    margin: 0 0 1rem;
+    padding-left: 1.15rem;
+    color: var(--ink-2);
+    line-height: 1.6;
+}
+
+.reasons li {
+    margin-bottom: 0.4rem;
+}
+
+.request-id {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    color: var(--ink-2);
+    word-break: break-all;
+}
+
+.mono {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+.notice p:last-child {
+    margin-bottom: 0;
+}
+
+.notice .muted {
+    font-size: 0.85rem;
+}
+
+@media (max-width: 40rem) {
+    .coverage th:last-child,
+    .coverage td:last-child {
+        width: auto;
+    }
+
+    .advisory {
+        padding: 1rem;
+    }
+
+    .advisory__lede {
+        font-size: 1rem;
+    }
+}
